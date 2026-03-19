@@ -16,16 +16,60 @@
     overflow: hidden;
   }
 
+  /* Default scrollbar — keep narrow for non-panel areas */
   ::-webkit-scrollbar {
     width: 4px;
   }
   ::-webkit-scrollbar-track {
-    background: #0a0f1e;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
     background: #1e3a5f;
     border-radius: 2px;
   }
+}
+
+/* ─── Scrollbar: panel (shipment list, form) ───────────────────────────── */
+.scrollbar-panel {
+  scrollbar-width: thin;
+  scrollbar-color: #1e4976 #0a1628;
+}
+.scrollbar-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-panel::-webkit-scrollbar-track {
+  background: #0a1628;
+  border-radius: 3px;
+}
+.scrollbar-panel::-webkit-scrollbar-thumb {
+  background: #1e4976;
+  border-radius: 3px;
+  border: 1px solid #0d1f3c;
+}
+.scrollbar-panel::-webkit-scrollbar-thumb:hover {
+  background: #2563a8;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.4);
+}
+
+/* ─── Scrollbar: thin (depot capacity, compact lists) ───────────────────── */
+.scrollbar-thin-panel {
+  scrollbar-width: thin;
+  scrollbar-color: #162d4a #070e1c;
+}
+.scrollbar-thin-panel::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin-panel::-webkit-scrollbar-track {
+  background: #070e1c;
+  border-radius: 2px;
+}
+.scrollbar-thin-panel::-webkit-scrollbar-thumb {
+  background: #162d4a;
+  border-radius: 2px;
+}
+.scrollbar-thin-panel::-webkit-scrollbar-thumb:hover {
+  background: #1e4976;
+  box-shadow: 0 0 4px rgba(6, 182, 212, 0.3);
 }
 
 @layer utilities {

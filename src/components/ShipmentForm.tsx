@@ -134,7 +134,7 @@ export default function ShipmentForm({ stations, edges, onAddShipment, lastError
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="flex flex-col h-full overflow-y-auto scrollbar-panel">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
         {/* Cargo Name */}
         <div className="flex flex-col gap-1.5">

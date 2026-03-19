@@ -211,7 +211,7 @@ export default function Dashboard({
           <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">Depot Capacity</span>
           <span className="text-[10px] font-mono text-slate-600">{stations.length} stations</span>
         </div>
-        <div className="overflow-y-auto max-h-[168px] px-3 pb-3 flex flex-col gap-2">
+        <div className="overflow-y-auto scrollbar-thin-panel max-h-[168px] px-3 pb-3 flex flex-col gap-2">
           {stations.map(st => {
             const cfg = TYPE_CONFIG[st.type];
             const pct = st.currentLoad / st.capacity;
@@ -248,7 +248,7 @@ export default function Dashboard({
           </div>
         ) : (
           <div className="relative flex-1 min-h-0">
-            <div className="absolute inset-0 overflow-y-auto p-3 flex flex-col gap-2">
+            <div className="absolute inset-0 overflow-y-auto scrollbar-panel p-3 flex flex-col gap-2">
               {sortedShipments.map(s => (
                 <ShipmentCard
                   key={s.id}
