@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { Station, Edge, Shipment, ShipmentFormData } from './types';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import type { Station, Edge, Shipment, ShipmentFormData, Anomaly, NotificationEntry } from './types';
 import { INITIAL_STATIONS, INITIAL_EDGES, createInitialShipments } from './data/initialData';
 import { findOptimalPath, advanceShipment, generateId } from './utils/routing';
+import { detectAnomalies } from './utils/anomalyDetection';
 import GraphView from './components/GraphView';
 import Dashboard from './components/Dashboard';
 import ShipmentForm from './components/ShipmentForm';
+import AlertsPanel from './components/AlertsPanel';
 
-type Tab = 'dashboard' | 'new-shipment';
+type Tab = 'dashboard' | 'alerts' | 'new-shipment';
 
 function Header({
   inTransit,
@@ -74,20 +76,47 @@ function Header({
   );
 }
 
-function SidebarTabs({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+function SidebarTabs({
+  active,
+  onChange,
+  alertCount,
+  hasCritical,
+}: {
+  active: Tab;
+  onChange: (t: Tab) => void;
+  alertCount: number;
+  hasCritical: boolean;
+}) {
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'alerts', label: 'Alerts' },
+    { id: 'new-shipment', label: 'New Shipment' },
+  ];
+
   return (
     <div className="flex border-b border-slate-800/60">
-      {(['dashboard', 'new-shipment'] as Tab[]).map(tab => (
+      {tabs.map(tab => (
         <button
-          key={tab}
-          onClick={() => onChange(tab)}
-          className={`flex-1 py-3 text-xs font-mono font-medium transition-all uppercase tracking-wider ${
-            active === tab
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={`flex-1 py-3 text-xs font-mono font-medium transition-all uppercase tracking-wider relative ${
+            active === tab.id
               ? 'text-cyan-400 border-b-2 border-cyan-500 bg-cyan-500/5'
               : 'text-slate-500 hover:text-slate-300 border-b-2 border-transparent'
           }`}
         >
-          {tab === 'dashboard' ? 'Dashboard' : 'New Shipment'}
+          {tab.label}
+          {tab.id === 'alerts' && alertCount > 0 && (
+            <span
+              className={`absolute top-1.5 right-2 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold font-mono flex items-center justify-center ${
+                hasCritical
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'bg-orange-500/80 text-white'
+              }`}
+            >
+              {alertCount}
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -103,6 +132,54 @@ export default function App() {
   const [highlightedPath, setHighlightedPath] = useState<string[]>([]);
   const [highlightedShipmentId, setHighlightedShipmentId] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
+
+  // Derive active anomalies fresh every render — no extra state needed.
+  const activeAnomalies = useMemo(
+    () => detectAnomalies(stations, edges),
+    [stations, edges]
+  );
+
+  // Track the previous anomaly map so we can detect transitions (new / resolved / escalated).
+  const prevAnomaliesRef = useRef<Map<string, Anomaly>>(new Map());
+  useEffect(() => {
+    const currentMap = new Map(activeAnomalies.map(a => [a.id, a]));
+    const prev = prevAnomaliesRef.current;
+    const newEntries: NotificationEntry[] = [];
+
+    // New anomalies or severity escalations
+    for (const a of activeAnomalies) {
+      const prevA = prev.get(a.id);
+      if (!prevA || prevA.type !== a.type) {
+        newEntries.push({
+          id: generateId(),
+          anomalyId: a.id,
+          type: a.type,
+          message: a.message,
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    // Resolved anomalies
+    for (const [id, prevA] of prev) {
+      if (!currentMap.has(id)) {
+        newEntries.push({
+          id: generateId(),
+          anomalyId: id,
+          type: 'resolved',
+          message: `${prevA.entityName} returned to normal`,
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    if (newEntries.length > 0) {
+      setNotifications(prev => [...newEntries, ...prev].slice(0, 200));
+    }
+
+    prevAnomaliesRef.current = currentMap;
+  }, [activeAnomalies]);
 
   // Keep a ref to edges so the tick closure always sees the latest value
   // without needing to restart the interval every time edge loads change.
@@ -231,6 +308,11 @@ export default function App() {
 
   const inTransit = shipments.filter(s => s.status === 'in-transit').length;
   const delivered = shipments.filter(s => s.status === 'delivered').length;
+  const anomalyEntityIds = useMemo(
+    () => new Set(activeAnomalies.map(a => a.entityId)),
+    [activeAnomalies]
+  );
+  const hasCritical = activeAnomalies.some(a => a.type === 'critical');
 
   return (
     <div className="h-screen flex flex-col bg-space-950 overflow-hidden">
@@ -246,14 +328,20 @@ export default function App() {
             selectedStation={selectedStation}
             onSelectStation={setSelectedStation}
             highlightedPath={highlightedPath}
+            anomalyEntityIds={anomalyEntityIds}
           />
         </div>
 
         {/* Sidebar — right panel */}
         <div className="w-[380px] flex-shrink-0 flex flex-col border-l border-slate-800/80 glass">
-          <SidebarTabs active={activeTab} onChange={setActiveTab} />
+          <SidebarTabs
+            active={activeTab}
+            onChange={setActiveTab}
+            alertCount={activeAnomalies.length}
+            hasCritical={hasCritical}
+          />
           <div className="flex-1 overflow-hidden">
-            {activeTab === 'dashboard' ? (
+            {activeTab === 'dashboard' && (
               <Dashboard
                 stations={stations}
                 edges={edges}
@@ -261,7 +349,15 @@ export default function App() {
                 onHighlightPath={(path, id) => handleHighlightPath(path, id)}
                 highlightedShipmentId={highlightedShipmentId}
               />
-            ) : (
+            )}
+            {activeTab === 'alerts' && (
+              <AlertsPanel
+                activeAnomalies={activeAnomalies}
+                notifications={notifications}
+                onClearNotifications={() => setNotifications([])}
+              />
+            )}
+            {activeTab === 'new-shipment' && (
               <ShipmentForm
                 stations={stations}
                 edges={edges}

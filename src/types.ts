@@ -64,6 +64,27 @@ export const STATUS_CONFIG: Record<ShipmentStatus, { label: string; color: strin
   failed:     { label: 'FAILED',     color: 'text-red-400',   bgColor: 'bg-red-950/60',   dot: 'bg-red-400' },
 };
 
+export type AnomalyType = 'warning' | 'critical';
+export type AnomalyCategory = 'depot-capacity' | 'route-capacity';
+
+export interface Anomaly {
+  id: string;            // stable key: "depot-<stationId>" or "route-<edgeId>"
+  type: AnomalyType;
+  category: AnomalyCategory;
+  entityId: string;
+  entityName: string;
+  message: string;
+  pct: number;           // 0-1 load ratio
+}
+
+export interface NotificationEntry {
+  id: string;
+  anomalyId: string;
+  type: AnomalyType | 'resolved';
+  message: string;
+  timestamp: number;
+}
+
 export const TYPE_CONFIG: Record<StationType, { color: string; strokeColor: string; label: string }> = {
   hub:     { color: '#06b6d4', strokeColor: '#0891b2', label: 'Hub' },
   gateway: { color: '#3b82f6', strokeColor: '#2563eb', label: 'Gateway' },

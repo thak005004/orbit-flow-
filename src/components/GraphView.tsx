@@ -10,6 +10,7 @@ interface GraphViewProps {
   selectedStation: string | null;
   onSelectStation: (id: string | null) => void;
   highlightedPath: string[];
+  anomalyEntityIds: Set<string>;
 }
 
 // Stable random stars
@@ -41,6 +42,7 @@ function StationNode({
   isSelected,
   isHighlighted,
   isOnActivePath,
+  isAnomalous,
   onClick,
   onHover,
 }: {
@@ -48,17 +50,21 @@ function StationNode({
   isSelected: boolean;
   isHighlighted: boolean;
   isOnActivePath: boolean;
+  isAnomalous: boolean;
   onClick: (e: React.MouseEvent<SVGGElement>) => void;
   onHover: (id: string | null) => void;
 }) {
   const config = TYPE_CONFIG[station.type];
   const loadPct = station.currentLoad / station.capacity;
   const loadColor = loadPct > 0.85 ? '#ef4444' : loadPct > 0.6 ? '#f59e0b' : '#10b981';
+  const isCritical = loadPct >= 0.95;
 
   // Radius based on type importance
   const radius = station.type === 'hub' ? 22 : station.type === 'gateway' ? 20 : station.type === 'depot' ? 18 : 15;
   const glowRadius = radius + 8;
   const labelY = station.y + radius + 16;
+
+  const borderColor = isAnomalous ? (isCritical ? '#ef4444' : '#f97316') : config.color;
 
   return (
     <g
@@ -67,6 +73,21 @@ function StationNode({
       onMouseEnter={() => onHover(station.id)}
       onMouseLeave={() => onHover(null)}
     >
+      {/* Anomaly warning ring — pulsing red/orange */}
+      {isAnomalous && (
+        <circle
+          cx={station.x}
+          cy={station.y}
+          r={glowRadius + 10}
+          fill="none"
+          stroke={isCritical ? '#ef4444' : '#f97316'}
+          strokeWidth={2}
+          opacity={0.6}
+          className="node-pulse"
+          style={{ filter: `drop-shadow(0 0 8px ${isCritical ? '#ef4444' : '#f97316'})` }}
+        />
+      )}
+
       {/* Outer glow when selected or highlighted */}
       {(isSelected || isHighlighted || isOnActivePath) && (
         <circle
@@ -88,9 +109,9 @@ function StationNode({
         cy={station.y}
         r={glowRadius}
         fill="none"
-        stroke={config.color}
-        strokeWidth={isSelected || isHighlighted ? 1.5 : 0.8}
-        opacity={isSelected || isHighlighted ? 0.7 : 0.3}
+        stroke={borderColor}
+        strokeWidth={isSelected || isHighlighted || isAnomalous ? 1.5 : 0.8}
+        opacity={isSelected || isHighlighted || isAnomalous ? 0.7 : 0.3}
         strokeDasharray={isSelected ? '4 2' : 'none'}
       />
 
@@ -99,11 +120,11 @@ function StationNode({
         cx={station.x}
         cy={station.y}
         r={radius}
-        fill={`${config.color}22`}
-        stroke={config.color}
-        strokeWidth={isSelected || isHighlighted ? 2.5 : 1.5}
+        fill={isAnomalous ? `${borderColor}33` : `${config.color}22`}
+        stroke={borderColor}
+        strokeWidth={isSelected || isHighlighted || isAnomalous ? 2.5 : 1.5}
         style={{
-          filter: `drop-shadow(0 0 ${isSelected ? 12 : 6}px ${config.color}88)`,
+          filter: `drop-shadow(0 0 ${isSelected || isAnomalous ? 12 : 6}px ${borderColor}88)`,
         }}
       />
 
@@ -169,21 +190,24 @@ function EdgeLine({
   to,
   isActive,
   isHighlighted,
+  isAnomalous,
 }: {
   edge: Edge;
   from: Station;
   to: Station;
   isActive: boolean;
   isHighlighted: boolean;
+  isAnomalous: boolean;
 }) {
-  const loadPct = edge.currentLoad / edge.maxCapacity;
-  const baseOpacity = isActive || isHighlighted ? 1 : 0.25;
+  const loadPct = edge.maxCapacity > 0 ? edge.currentLoad / edge.maxCapacity : 0;
+  const isCritical = loadPct >= 0.95;
+  const baseOpacity = isActive || isHighlighted || isAnomalous ? 1 : 0.25;
   const strokeColor = isHighlighted
     ? '#facc15'
+    : isAnomalous
+    ? (isCritical ? '#ef4444' : '#f97316')
     : isActive
     ? '#06b6d4'
-    : loadPct > 0.8
-    ? '#ef444488'
     : '#1e3a5f';
 
   // Midpoint for label
@@ -205,13 +229,13 @@ function EdgeLine({
         x1={from.x} y1={from.y}
         x2={to.x} y2={to.y}
         stroke={strokeColor}
-        strokeWidth={isHighlighted ? 2.5 : isActive ? 2 : 1}
+        strokeWidth={isHighlighted ? 2.5 : isAnomalous ? 2 : isActive ? 2 : 1}
         opacity={baseOpacity}
-        strokeDasharray={isActive ? '8 4' : isHighlighted ? '6 3' : 'none'}
-        className={isActive ? 'route-dash' : ''}
+        strokeDasharray={isAnomalous ? '6 3' : isActive ? '8 4' : isHighlighted ? '6 3' : 'none'}
+        className={isActive || isAnomalous ? 'route-dash' : ''}
         style={
-          isActive || isHighlighted
-            ? { filter: `drop-shadow(0 0 4px ${strokeColor})` }
+          isActive || isHighlighted || isAnomalous
+            ? { filter: `drop-shadow(0 0 ${isAnomalous ? 6 : 4}px ${strokeColor})` }
             : undefined
         }
       />
@@ -355,6 +379,7 @@ export default function GraphView({
   selectedStation,
   onSelectStation,
   highlightedPath,
+  anomalyEntityIds,
 }: GraphViewProps) {
   const [hoveredStation, setHoveredStation] = useState<string | null>(null);
 
@@ -427,6 +452,7 @@ export default function GraphView({
               to={to}
               isActive={isEdgeActive(edge, activeShipments)}
               isHighlighted={isEdgeInPath(edge, highlightedPath)}
+              isAnomalous={anomalyEntityIds.has(edge.id)}
             />
           );
         })}
@@ -439,6 +465,7 @@ export default function GraphView({
             isSelected={selectedStation === station.id}
             isHighlighted={highlightedPath.includes(station.id)}
             isOnActivePath={activeShipments.some(s => s.path?.includes(station.id))}
+            isAnomalous={anomalyEntityIds.has(station.id)}
             onClick={(e) => {
               e.stopPropagation();
               onSelectStation(station.id === selectedStation ? null : station.id);
