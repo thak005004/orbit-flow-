@@ -38,6 +38,46 @@ function CapacityBar({ label, used, total, color }: { label: string; used: numbe
   );
 }
 
+function efficiencyColor(score: number): string {
+  if (score >= 80) return '#10b981'; // green
+  if (score >= 60) return '#eab308'; // yellow
+  if (score >= 40) return '#f97316'; // orange
+  return '#ef4444';                  // red
+}
+
+function efficiencyLabel(score: number): string {
+  if (score >= 80) return 'OPTIMAL';
+  if (score >= 60) return 'GOOD';
+  if (score >= 40) return 'FAIR';
+  return 'POOR';
+}
+
+function EfficiencyBar({ score }: { score: number }) {
+  const color = efficiencyColor(score);
+  const label = efficiencyLabel(score);
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <span className="text-[10px] font-mono text-slate-600 w-14 flex-shrink-0">EFFIC.</span>
+      <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width: `${score}%`,
+            backgroundColor: color,
+            boxShadow: `0 0 4px ${color}88`,
+          }}
+        />
+      </div>
+      <span
+        className="text-[10px] font-mono font-bold w-16 text-right flex-shrink-0"
+        style={{ color }}
+      >
+        {score}% <span className="font-normal opacity-70">{label}</span>
+      </span>
+    </div>
+  );
+}
+
 function ShipmentCard({
   shipment,
   stations,
@@ -112,6 +152,9 @@ function ShipmentCard({
         </div>
         <span className="text-[10px] font-mono text-slate-500 w-8 text-right">{progress}%</span>
       </div>
+
+      {/* Efficiency score */}
+      <EfficiencyBar score={shipment.efficiencyScore} />
 
       {shipment.status === 'in-transit' && (
         <div className="mt-1.5 flex items-center gap-3 text-[10px] text-slate-600 font-mono">

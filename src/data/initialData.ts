@@ -1,4 +1,5 @@
 import type { Station, Edge, Shipment } from '../types';
+import { calculateEfficiencyScore } from '../utils/routing';
 
 export const INITIAL_STATIONS: Station[] = [
   {
@@ -228,6 +229,9 @@ export function createInitialShipments(): Shipment[] {
       totalCost: 5.7,
       currentLeg: 1,     // on the venus-cloud → earth-orbital leg
       legProgress: 0.72, // nearly there
+      efficiencyScore: calculateEfficiencyScore(
+        ['mercury-mining', 'venus-cloud', 'earth-orbital'], 120, 'high', INITIAL_EDGES
+      ),
     },
     {
       id: 'demo-002',
@@ -242,6 +246,9 @@ export function createInitialShipments(): Shipment[] {
       totalCost: 8.5,
       currentLeg: 0,     // just departed EOS-1
       legProgress: 0.31,
+      efficiencyScore: calculateEfficiencyScore(
+        ['earth-orbital', 'mars-hub'], 45, 'critical', INITIAL_EDGES
+      ),
     },
     {
       id: 'demo-003',
@@ -256,6 +263,9 @@ export function createInitialShipments(): Shipment[] {
       totalCost: 17.8,
       currentLeg: 1,     // MTH-2 → ABD-9, well under way
       legProgress: 0.83,
+      efficiencyScore: calculateEfficiencyScore(
+        ['luna-base', 'mars-hub', 'asteroid-depot', 'jupiter-gateway'], 280, 'medium', INITIAL_EDGES
+      ),
     },
     {
       id: 'demo-004',
@@ -270,6 +280,9 @@ export function createInitialShipments(): Shipment[] {
       totalCost: 15.2,
       currentLeg: 0,     // VCP-7 → EOS-1, halfway
       legProgress: 0.51,
+      efficiencyScore: calculateEfficiencyScore(
+        ['venus-cloud', 'earth-orbital', 'mars-hub', 'asteroid-depot'], 30, 'low', INITIAL_EDGES
+      ),
     },
     {
       id: 'demo-005',
@@ -284,6 +297,9 @@ export function createInitialShipments(): Shipment[] {
       totalCost: 16.7,
       currentLeg: 0,     // MTH-2 → ABD-9, early transit
       legProgress: 0.18,
+      efficiencyScore: calculateEfficiencyScore(
+        ['mars-hub', 'asteroid-depot', 'saturn-station'], 250, 'high', INITIAL_EDGES
+      ),
     },
   ];
 }

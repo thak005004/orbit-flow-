@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Station, Edge, Shipment, ShipmentFormData, Anomaly, NotificationEntry } from './types';
 import { INITIAL_STATIONS, INITIAL_EDGES, createInitialShipments } from './data/initialData';
-import { findOptimalPath, advanceShipment, generateId } from './utils/routing';
+import { findOptimalPath, advanceShipment, generateId, calculateEfficiencyScore } from './utils/routing';
 import { detectAnomalies } from './utils/anomalyDetection';
 import GraphView from './components/GraphView';
 import Dashboard from './components/Dashboard';
@@ -265,6 +265,9 @@ export default function App() {
         totalCost: result.cost,
         currentLeg: 0,
         legProgress: 0,
+        efficiencyScore: calculateEfficiencyScore(
+          result.path, formData.weight, formData.priority, edges
+        ),
       };
 
       setShipments(prev => [...prev, newShipment]);

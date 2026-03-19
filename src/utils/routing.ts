@@ -210,3 +210,76 @@ export function isEdgeInPath(edge: Edge, path: string[]): boolean {
 export function generateId(): string {
   return Math.random().toString(36).slice(2, 11);
 }
+
+/**
+ * BFS over the graph ignoring capacity — returns the fewest hops between
+ * two stations if they are connected, or -1 if unreachable.
+ */
+export function findMinHops(edges: Edge[], fromId: string, toId: string): number {
+  if (fromId === toId) return 0;
+  const visited = new Set<string>([fromId]);
+  const queue: Array<{ id: string; hops: number }> = [{ id: fromId, hops: 0 }];
+
+  while (queue.length > 0) {
+    const { id, hops } = queue.shift()!;
+    for (const edge of edges) {
+      const neighbor =
+        edge.from === id ? edge.to :
+        edge.to   === id ? edge.from :
+        null;
+      if (!neighbor || visited.has(neighbor)) continue;
+      if (neighbor === toId) return hops + 1;
+      visited.add(neighbor);
+      queue.push({ id: neighbor, hops: hops + 1 });
+    }
+  }
+  return -1; // disconnected
+}
+
+/**
+ * Route efficiency score (0–100) composed of three factors:
+ *
+ *  45% — Hop efficiency:    optimalHops / actualHops
+ *          (1.0 when the routed path is already shortest hop-count)
+ *  35% — Capacity fill:     weight / bottleneck edge capacity, clamped [0,1]
+ *          (rewards shipments that make good use of available throughput)
+ *  20% — Priority weight:   critical 1.0 · high 0.75 · medium 0.5 · low 0.25
+ *          (important cargo is credited for being dispatched at all)
+ */
+export function calculateEfficiencyScore(
+  path: string[],
+  weight: number,
+  priority: import('../types').Priority,
+  edges: Edge[]
+): number {
+  if (path.length < 2) return 0;
+
+  const actualHops = path.length - 1;
+
+  // Hop efficiency
+  const optimalHops = findMinHops(edges, path[0], path[path.length - 1]);
+  const hopScore = optimalHops > 0 ? Math.min(optimalHops / actualHops, 1) : 1;
+
+  // Capacity fill — find the bottleneck (minimum maxCapacity along the path)
+  let bottleneck = Infinity;
+  for (let i = 0; i < path.length - 1; i++) {
+    const edge = edges.find(
+      e => (e.from === path[i] && e.to === path[i + 1]) ||
+           (e.from === path[i + 1] && e.to === path[i])
+    );
+    if (edge) bottleneck = Math.min(bottleneck, edge.maxCapacity);
+  }
+  const capacityScore = bottleneck === Infinity ? 0.5 : Math.min(weight / bottleneck, 1);
+
+  // Priority weight
+  const priorityWeight: Record<string, number> = {
+    critical: 1.00,
+    high:     0.75,
+    medium:   0.50,
+    low:      0.25,
+  };
+  const priorityScore = priorityWeight[priority] ?? 0.5;
+
+  const raw = hopScore * 0.45 + capacityScore * 0.35 + priorityScore * 0.20;
+  return Math.round(Math.min(raw, 1) * 100);
+}

@@ -40,6 +40,7 @@ export interface Shipment {
   legProgress: number;
   deliveredAt?: number;
   errorMsg?: string;
+  efficiencyScore: number; // 0-100
 }
 
 export interface ShipmentFormData {
