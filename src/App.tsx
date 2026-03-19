@@ -7,8 +7,9 @@ import GraphView from './components/GraphView';
 import Dashboard from './components/Dashboard';
 import ShipmentForm from './components/ShipmentForm';
 import AlertsPanel from './components/AlertsPanel';
+import StatsPanel from './components/StatsPanel';
 
-type Tab = 'dashboard' | 'alerts' | 'new-shipment';
+type Tab = 'dashboard' | 'stats' | 'alerts' | 'new-shipment';
 
 function Header({
   inTransit,
@@ -88,9 +89,10 @@ function SidebarTabs({
   hasCritical: boolean;
 }) {
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'alerts', label: 'Alerts' },
-    { id: 'new-shipment', label: 'New Shipment' },
+    { id: 'dashboard',    label: 'Overview'  },
+    { id: 'stats',        label: 'Stats'     },
+    { id: 'alerts',       label: 'Alerts'    },
+    { id: 'new-shipment', label: 'Dispatch'  },
   ];
 
   return (
@@ -351,6 +353,13 @@ export default function App() {
                 shipments={shipments}
                 onHighlightPath={(path, id) => handleHighlightPath(path, id)}
                 highlightedShipmentId={highlightedShipmentId}
+              />
+            )}
+            {activeTab === 'stats' && (
+              <StatsPanel
+                shipments={shipments}
+                edges={edges}
+                stations={stations}
               />
             )}
             {activeTab === 'alerts' && (
