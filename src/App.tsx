@@ -9,8 +9,9 @@ import Dashboard from './components/Dashboard';
 import ShipmentForm from './components/ShipmentForm';
 import AlertsPanel from './components/AlertsPanel';
 import StatsPanel from './components/StatsPanel';
+import RouteHistory from './components/RouteHistory';
 
-type Tab = 'dashboard' | 'stats' | 'alerts' | 'new-shipment';
+type Tab = 'dashboard' | 'stats' | 'history' | 'alerts' | 'new-shipment';
 
 function Header({
   inTransit,
@@ -92,6 +93,7 @@ function SidebarTabs({
   const tabs: { id: Tab; label: string }[] = [
     { id: 'dashboard',    label: 'Overview'  },
     { id: 'stats',        label: 'Stats'     },
+    { id: 'history',      label: 'History'   },
     { id: 'alerts',       label: 'Alerts'    },
     { id: 'new-shipment', label: 'Dispatch'  },
   ];
@@ -407,6 +409,12 @@ export default function App() {
               <StatsPanel
                 shipments={shipments}
                 edges={edges}
+                stations={stations}
+              />
+            )}
+            {activeTab === 'history' && (
+              <RouteHistory
+                shipments={shipments}
                 stations={stations}
               />
             )}
