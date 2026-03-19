@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: #020817;
+    color: white;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0f1e;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e3a5f;
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  .text-glow-cyan {
+    text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+  }
+  .text-glow-blue {
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  .border-glow-cyan {
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.2), inset 0 0 12px rgba(6, 182, 212, 0.05);
+  }
+  .glass {
+    background: rgba(13, 21, 38, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .glass-light {
+    background: rgba(17, 29, 53, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* Animated route dash */
+.route-dash {
+  stroke-dasharray: 8 4;
+  animation: dash-flow 1.5s linear infinite;
+}
+
+@keyframes dash-flow {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Node pulse ring */
+.node-pulse {
+  animation: node-pulse-anim 2s ease-out infinite;
+}
+
+@keyframes node-pulse-anim {
+  0% { r: 18; opacity: 0.8; }
+  100% { r: 34; opacity: 0; }
+}
+
+/* Shipment dot glow */
+.shipment-dot {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* Scanline overlay */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+}
