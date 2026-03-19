@@ -415,6 +415,32 @@ export default function App() {
     [stations, edges]
   );
 
+  const cancelShipment = useCallback((shipmentId: string) => {
+    const shipment = shipments.find(s => s.id === shipmentId);
+    if (!shipment || (shipment.status !== 'in-transit' && shipment.status !== 'pending')) return;
+
+    setShipments(prev => prev.map(s =>
+      s.id === shipmentId ? { ...s, status: 'failed', errorMsg: 'Cancelled by operator' } : s
+    ));
+
+    // Release edge loads
+    setEdges(prev => prev.map(e => {
+      const onPath = shipment.path.some((nodeId, i) =>
+        i < shipment.path.length - 1 &&
+        ((e.from === nodeId && e.to === shipment.path[i + 1]) ||
+         (e.from === shipment.path[i + 1] && e.to === nodeId))
+      );
+      return onPath ? { ...e, currentLoad: Math.max(0, e.currentLoad - shipment.weight) } : e;
+    }));
+
+    // Release destination station load
+    setStations(prev => prev.map(st =>
+      st.id === shipment.destination
+        ? { ...st, currentLoad: Math.max(0, st.currentLoad - shipment.weight) }
+        : st
+    ));
+  }, [shipments]);
+
   const handleHighlightPath = useCallback(
     (path: string[], shipmentId?: string) => {
       setHighlightedPath(path);
@@ -509,6 +535,7 @@ export default function App() {
                 shipments={shipments}
                 onHighlightPath={(path, id) => handleHighlightPath(path, id)}
                 highlightedShipmentId={highlightedShipmentId}
+                onCancelShipment={cancelShipment}
               />
             )}
             {activeTab === 'stats' && (

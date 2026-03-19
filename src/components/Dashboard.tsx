@@ -8,6 +8,7 @@ interface DashboardProps {
   shipments: Shipment[];
   onHighlightPath: (path: string[], id?: string) => void;
   highlightedShipmentId: string | null;
+  onCancelShipment: (id: string) => void;
 }
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color: string }) {
@@ -83,12 +84,15 @@ function ShipmentCard({
   stations,
   isHighlighted,
   onClick,
+  onCancel,
 }: {
   shipment: Shipment;
   stations: Station[];
   isHighlighted: boolean;
   onClick: () => void;
+  onCancel?: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
   const priorityCfg = PRIORITY_CONFIG[shipment.priority];
   const statusCfg = STATUS_CONFIG[shipment.status];
   const origin = stations.find(s => s.id === shipment.origin);
@@ -114,11 +118,11 @@ function ShipmentCard({
       }`}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between mb-2">
+      <div className="flex items-start justify-between mb-2 gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-xs font-semibold text-white truncate">{shipment.name}</span>
-            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${priorityCfg.color} ${priorityCfg.bgColor} ${priorityCfg.borderColor}`}>
+            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${priorityCfg.color} ${priorityCfg.bgColor} ${priorityCfg.borderColor}`}>
               {priorityCfg.label}
             </span>
           </div>
@@ -132,9 +136,39 @@ function ShipmentCard({
             <span className="text-amber-500/80">₡{shipment.fuelCost.toFixed(2)}</span>
           </div>
         </div>
-        <div className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-mono ${statusCfg.color} ${statusCfg.bgColor} border-slate-700/30`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot} ${shipment.status === 'in-transit' ? 'animate-pulse' : ''}`} />
-          {statusCfg.label}
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-mono ${statusCfg.color} ${statusCfg.bgColor} border-slate-700/30`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot} ${shipment.status === 'in-transit' ? 'animate-pulse' : ''}`} />
+            {statusCfg.label}
+          </div>
+
+          {/* Cancel button — only for active shipments */}
+          {onCancel && (shipment.status === 'in-transit' || shipment.status === 'pending') && (
+            confirming ? (
+              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                <span className="text-[9px] font-mono text-red-400">Cancel?</span>
+                <button
+                  onClick={() => { onCancel(); setConfirming(false); }}
+                  className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 transition-colors"
+                >Yes</button>
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="px-1.5 py-0.5 rounded text-[9px] font-mono text-slate-500 border border-slate-700/40 hover:text-slate-300 transition-colors"
+                >No</button>
+              </div>
+            ) : (
+              <button
+                onClick={e => { e.stopPropagation(); setConfirming(true); }}
+                className="w-6 h-6 rounded flex items-center justify-center text-slate-600 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors"
+                title="Cancel shipment"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )
+          )}
         </div>
       </div>
 
@@ -165,6 +199,11 @@ function ShipmentCard({
           <span>Cost: {shipment.totalCost.toFixed(1)}d</span>
           <span>·</span>
           <span>{elapsed}s ago</span>
+        </div>
+      )}
+      {shipment.status === 'failed' && shipment.errorMsg && (
+        <div className="mt-1.5 text-[10px] font-mono text-red-400/70">
+          ✕ {shipment.errorMsg}
         </div>
       )}
 
@@ -204,6 +243,7 @@ export default function Dashboard({
   shipments,
   onHighlightPath,
   highlightedShipmentId,
+  onCancelShipment,
 }: DashboardProps) {
   const stats = useMemo(() => {
     const inTransit = shipments.filter(s => s.status === 'in-transit').length;
@@ -358,6 +398,7 @@ export default function Dashboard({
                       onHighlightPath(s.path, s.id);
                     }
                   }}
+                  onCancel={() => onCancelShipment(s.id)}
                 />
               ))}
             </div>
