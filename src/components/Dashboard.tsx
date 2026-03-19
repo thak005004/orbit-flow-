@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Station, Edge, Shipment } from '../types';
 import { PRIORITY_CONFIG, STATUS_CONFIG, TYPE_CONFIG } from '../types';
+import { calculateRemainingDays } from '../utils/routing';
 
 interface DashboardProps {
   stations: Station[];
@@ -79,15 +80,24 @@ function EfficiencyBar({ score }: { score: number }) {
   );
 }
 
+function formatETA(days: number): string {
+  if (days <= 0) return 'arriving';
+  if (days < 0.1) return '< 0.1d';
+  if (days < 10)  return `~${days.toFixed(1)}d`;
+  return `~${Math.round(days)}d`;
+}
+
 function ShipmentCard({
   shipment,
   stations,
+  edges,
   isHighlighted,
   onClick,
   onCancel,
 }: {
   shipment: Shipment;
   stations: Station[];
+  edges: Edge[];
   isHighlighted: boolean;
   onClick: () => void;
   onCancel?: () => void;
@@ -193,12 +203,14 @@ function ShipmentCard({
       <EfficiencyBar score={shipment.efficiencyScore} />
 
       {shipment.status === 'in-transit' && (
-        <div className="mt-1.5 flex items-center gap-3 text-[10px] text-slate-600 font-mono">
+        <div className="mt-1.5 flex items-center gap-3 text-[10px] text-slate-600 font-mono flex-wrap">
           <span>Leg {shipment.currentLeg + 1}/{shipment.path.length - 1}</span>
           <span>·</span>
-          <span>Cost: {shipment.totalCost.toFixed(1)}d</span>
-          <span>·</span>
           <span>{elapsed}s ago</span>
+          <span>·</span>
+          <span className="text-cyan-500/80 font-semibold">
+            ETA {formatETA(calculateRemainingDays(shipment, edges))}
+          </span>
         </div>
       )}
       {shipment.status === 'failed' && shipment.errorMsg && (
@@ -390,6 +402,7 @@ export default function Dashboard({
                   key={s.id}
                   shipment={s}
                   stations={stations}
+                  edges={edges}
                   isHighlighted={highlightedShipmentId === s.id}
                   onClick={() => {
                     if (highlightedShipmentId === s.id) {

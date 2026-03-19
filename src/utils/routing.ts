@@ -302,6 +302,26 @@ export function getDijkstraSteps(
   return steps;
 }
 
+/**
+ * Remaining simulation-time travel cost (in days) for an in-transit shipment.
+ * Accounts for partial progress on the current leg plus all subsequent legs.
+ */
+export function calculateRemainingDays(shipment: Shipment, edges: Edge[]): number {
+  if (shipment.status !== 'in-transit' || shipment.path.length < 2) return 0;
+
+  let total = 0;
+  for (let i = shipment.currentLeg; i < shipment.path.length - 1; i++) {
+    const fromId = shipment.path[i];
+    const toId   = shipment.path[i + 1];
+    const edge   = edges.find(
+      e => (e.from === fromId && e.to === toId) || (e.from === toId && e.to === fromId)
+    );
+    const legCost = edge?.cost ?? 1;
+    total += i === shipment.currentLeg ? (1 - shipment.legProgress) * legCost : legCost;
+  }
+  return total;
+}
+
 /** Credits charged per astronomical unit per unit of cargo weight. */
 export const FUEL_RATE_PER_AU_PER_UNIT = 0.15;
 
