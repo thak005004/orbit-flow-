@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Station, Edge, Shipment } from '../types';
 import { PRIORITY_CONFIG, STATUS_CONFIG, TYPE_CONFIG } from '../types';
 
@@ -216,6 +216,8 @@ export default function Dashboard({
     return { inTransit, delivered, pending, failed, totalLoad, totalCap, activeEdges };
   }, [shipments, stations, edges]);
 
+  const [search, setSearch] = useState('');
+
   const sortedShipments = useMemo(() => {
     const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
     const statusOrder: Record<string, number> = { 'in-transit': 0, pending: 1, delivered: 2, failed: 3 };
@@ -225,6 +227,24 @@ export default function Dashboard({
       return order[a.priority] - order[b.priority];
     });
   }, [shipments]);
+
+  const filteredShipments = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sortedShipments;
+    return sortedShipments.filter(s => {
+      const origin = stations.find(st => st.id === s.origin);
+      const dest   = stations.find(st => st.id === s.destination);
+      return (
+        s.name.toLowerCase().includes(q) ||
+        s.priority.includes(q) ||
+        s.status.includes(q) ||
+        origin?.shortName.toLowerCase().includes(q) ||
+        origin?.name.toLowerCase().includes(q) ||
+        dest?.shortName.toLowerCase().includes(q) ||
+        dest?.name.toLowerCase().includes(q)
+      );
+    });
+  }, [sortedShipments, search, stations]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -276,11 +296,35 @@ export default function Dashboard({
 
       {/* Shipments List */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        <div className="px-3 py-2 border-b border-slate-800/60 flex items-center justify-between flex-shrink-0">
-          <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">
-            Shipments
-          </span>
-          <span className="text-xs font-mono text-slate-600">{shipments.length} total</span>
+        <div className="px-3 pt-2 pb-2 border-b border-slate-800/60 flex flex-col gap-2 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">Shipments</span>
+            <span className="text-xs font-mono text-slate-600">
+              {search ? `${filteredShipments.length} / ${shipments.length}` : `${shipments.length} total`}
+            </span>
+          </div>
+          <div className="relative">
+            <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by name, station, priority…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-6 pr-6 py-1 bg-slate-900/50 border border-slate-700/50 rounded text-[11px] font-mono text-slate-300 placeholder-slate-700 focus:outline-none focus:border-cyan-500/50 transition-colors"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {shipments.length === 0 ? (
@@ -291,10 +335,17 @@ export default function Dashboard({
             <span className="text-xs font-mono">No shipments yet</span>
             <span className="text-xs text-slate-700">Add one from the New Shipment tab</span>
           </div>
+        ) : filteredShipments.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-2 text-slate-600">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <span className="text-xs font-mono">No matches for "{search}"</span>
+          </div>
         ) : (
           <div className="relative flex-1 min-h-0">
             <div className="absolute inset-0 overflow-y-auto scrollbar-panel p-3 flex flex-col gap-2">
-              {sortedShipments.map(s => (
+              {filteredShipments.map(s => (
                 <ShipmentCard
                   key={s.id}
                   shipment={s}
