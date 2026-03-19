@@ -610,7 +610,7 @@ export default function GraphView({
 
       {/* ── Dijkstra visualiser control panel ────────────────────────────── */}
       {vizTotalSteps > 0 && (
-        <div className="absolute bottom-4 left-4 glass border border-slate-700/60 rounded-xl p-3 flex flex-col gap-2.5 min-w-[280px] shadow-2xl">
+        <div className="absolute bottom-2 left-2 lg:bottom-4 lg:left-4 glass border border-slate-700/60 rounded-xl p-2 lg:p-3 flex flex-col gap-2 lg:gap-2.5 w-[220px] lg:w-[280px] shadow-2xl">
           {/* Header row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -692,8 +692,8 @@ export default function GraphView({
             ))}
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center justify-center gap-3 pt-0.5 border-t border-slate-800/60">
+          {/* Legend — hidden on very small graph heights */}
+          <div className="hidden sm:flex items-center justify-center gap-3 pt-0.5 border-t border-slate-800/60">
             {[
               { color: '#ffffff', label: 'Examining' },
               { color: '#f59e0b', label: 'Frontier' },

@@ -19,12 +19,16 @@ function Header({
   stationCount,
   isDark,
   onToggleTheme,
+  showGraph,
+  onToggleGraph,
 }: {
   inTransit: number;
   delivered: number;
   stationCount: number;
   isDark: boolean;
   onToggleTheme: () => void;
+  showGraph: boolean;
+  onToggleGraph: () => void;
 }) {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
@@ -33,30 +37,28 @@ function Header({
   }, []);
 
   return (
-    <header className="h-14 flex items-center justify-between px-6 border-b border-slate-800/80 glass z-10 relative">
+    <header className="h-12 lg:h-14 flex items-center justify-between px-3 lg:px-6 border-b border-slate-800/80 glass z-10 relative flex-shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <svg className="w-7 h-7" viewBox="0 0 28 28" fill="none">
-            <circle cx="14" cy="14" r="10" stroke="#06b6d4" strokeWidth="1.5" opacity="0.4" />
-            <circle cx="14" cy="14" r="5" fill="#06b6d422" stroke="#06b6d4" strokeWidth="1.5" />
-            <path d="M14 4 L16 9 L14 8 L12 9 Z" fill="#06b6d4" opacity="0.8" />
-            <path d="M24 14 L19 16 L20 14 L19 12 Z" fill="#06b6d4" opacity="0.6" />
-            <circle cx="14" cy="14" r="2" fill="#06b6d4" style={{ filter: 'drop-shadow(0 0 4px #06b6d4)' }} />
-          </svg>
-        </div>
-        <div>
-          <div className="text-sm font-bold font-mono tracking-wider text-white leading-tight">
-            SPACE LOGISTICS
-            <span className="text-cyan-400"> ENGINE</span>
+      <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+        <svg className="w-6 h-6 lg:w-7 lg:h-7 flex-shrink-0" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="10" stroke="#06b6d4" strokeWidth="1.5" opacity="0.4" />
+          <circle cx="14" cy="14" r="5" fill="#06b6d422" stroke="#06b6d4" strokeWidth="1.5" />
+          <path d="M14 4 L16 9 L14 8 L12 9 Z" fill="#06b6d4" opacity="0.8" />
+          <path d="M24 14 L19 16 L20 14 L19 12 Z" fill="#06b6d4" opacity="0.6" />
+          <circle cx="14" cy="14" r="2" fill="#06b6d4" style={{ filter: 'drop-shadow(0 0 4px #06b6d4)' }} />
+        </svg>
+        <div className="min-w-0">
+          <div className="text-xs lg:text-sm font-bold font-mono tracking-wider text-white leading-tight truncate">
+            SPACE LOGISTICS<span className="text-cyan-400"> ENGINE</span>
           </div>
-          <div className="text-[10px] font-mono text-slate-600 tracking-widest">ORBITAL ROUTING SYSTEM v2.4</div>
+          <div className="hidden sm:block text-[10px] font-mono text-slate-600 tracking-widest">ORBITAL ROUTING SYSTEM v2.4</div>
         </div>
       </div>
 
-      {/* Status pills */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-4 px-4 py-1.5 rounded-lg bg-slate-900/60 border border-slate-800/60">
+      {/* Right controls */}
+      <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
+        {/* Status pills — hidden on small screens, shown from md up */}
+        <div className="hidden md:flex items-center gap-3 lg:gap-4 px-3 lg:px-4 py-1.5 rounded-lg bg-slate-900/60 border border-slate-800/60">
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
             <span className="text-[10px] font-mono text-slate-500">{stationCount} STATIONS</span>
@@ -64,25 +66,44 @@ function Header({
           <div className="w-px h-3 bg-slate-700" />
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            <span className="text-[10px] font-mono text-slate-400">{inTransit} IN TRANSIT</span>
+            <span className="text-[10px] font-mono text-slate-400">{inTransit} TRANSIT</span>
           </div>
           <div className="w-px h-3 bg-slate-700" />
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-            <span className="text-[10px] font-mono text-slate-500">{delivered} DELIVERED</span>
+            <span className="text-[10px] font-mono text-slate-500">{delivered} DONE</span>
           </div>
         </div>
 
-        <div className="px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-800/60">
+        {/* Compact status badge for mobile */}
+        <div className="flex md:hidden items-center gap-2 px-2 py-1 rounded-lg bg-slate-900/60 border border-slate-800/60">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+          <span className="text-[10px] font-mono text-slate-400">{inTransit} · {delivered}</span>
+        </div>
+
+        {/* Clock — hidden on mobile */}
+        <div className="hidden lg:block px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-800/60">
           <span className="text-[10px] font-mono text-slate-600">
             {time.toISOString().slice(0, 19).replace('T', ' ')} UTC
           </span>
         </div>
 
+        {/* Map toggle — only visible on mobile/tablet */}
+        <button
+          onClick={onToggleGraph}
+          className="lg:hidden w-8 h-8 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-center hover:border-cyan-500/40 transition-colors"
+          title={showGraph ? 'Hide map' : 'Show map'}
+        >
+          <svg className={`w-4 h-4 ${showGraph ? 'text-cyan-400' : 'text-slate-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" />
+          </svg>
+        </button>
+
+        {/* Theme toggle */}
         <button
           onClick={onToggleTheme}
           className="w-8 h-8 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-center hover:border-cyan-500/40 hover:bg-cyan-500/10 transition-colors"
-          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={isDark ? 'Light mode' : 'Dark mode'}
         >
           {isDark ? (
             <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -119,12 +140,12 @@ function SidebarTabs({
   ];
 
   return (
-    <div className="flex border-b border-slate-800/60">
+    <div className="flex border-b border-slate-800/60 flex-shrink-0">
       {tabs.map(tab => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`flex-1 py-3 text-xs font-mono font-medium transition-all uppercase tracking-wider relative ${
+          className={`flex-1 py-2 lg:py-3 text-[10px] lg:text-xs font-mono font-medium transition-all uppercase tracking-wide lg:tracking-wider relative ${
             active === tab.id
               ? 'text-cyan-400 border-b-2 border-cyan-500 bg-cyan-500/5'
               : 'text-slate-500 hover:text-slate-300 border-b-2 border-transparent'
@@ -133,7 +154,7 @@ function SidebarTabs({
           {tab.label}
           {tab.id === 'alerts' && alertCount > 0 && (
             <span
-              className={`absolute top-1.5 right-2 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold font-mono flex items-center justify-center ${
+              className={`absolute top-1 right-1 min-w-[14px] h-3.5 px-0.5 rounded-full text-[8px] font-bold font-mono flex items-center justify-center ${
                 hasCritical
                   ? 'bg-red-500 text-white animate-pulse'
                   : 'bg-orange-500/80 text-white'
@@ -167,6 +188,8 @@ export default function App() {
   const [highlightedShipmentId, setHighlightedShipmentId] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
+
+  const [showGraph, setShowGraph] = useState(true);
 
   // ── Dijkstra visualiser ────────────────────────────────────────────────────
   const [vizSteps, setVizSteps] = useState<DijkstraStep[]>([]);
@@ -390,11 +413,23 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-space-950 overflow-hidden">
-      <Header inTransit={inTransit} delivered={delivered} stationCount={stations.length} isDark={isDark} onToggleTheme={() => setIsDark(d => !d)} />
+      <Header
+        inTransit={inTransit}
+        delivered={delivered}
+        stationCount={stations.length}
+        isDark={isDark}
+        onToggleTheme={() => setIsDark(d => !d)}
+        showGraph={showGraph}
+        onToggleGraph={() => setShowGraph(v => !v)}
+      />
 
-      <main className="flex-1 flex overflow-hidden">
-        {/* Graph — left panel */}
-        <div className="flex-1 relative overflow-hidden">
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+        {/* Graph panel — full width on mobile (collapsible), left column on desktop */}
+        <div
+          className={`relative overflow-hidden flex-shrink-0 transition-all duration-300 lg:flex-1 lg:h-auto ${
+            showGraph ? 'h-52 sm:h-64 md:h-72' : 'h-0'
+          }`}
+        >
           <GraphView
             stations={stations}
             edges={edges}
@@ -417,15 +452,15 @@ export default function App() {
           />
         </div>
 
-        {/* Sidebar — right panel */}
-        <div className="w-[380px] flex-shrink-0 flex flex-col border-l border-slate-800/80 glass">
+        {/* Sidebar — full width below graph on mobile, fixed right column on desktop */}
+        <div className="flex-1 min-h-0 lg:flex-none lg:w-[380px] flex flex-col border-t lg:border-t-0 lg:border-l border-slate-800/80 glass overflow-hidden">
           <SidebarTabs
             active={activeTab}
             onChange={setActiveTab}
             alertCount={activeAnomalies.length}
             hasCritical={hasCritical}
           />
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden min-h-0">
             {activeTab === 'dashboard' && (
               <Dashboard
                 stations={stations}
