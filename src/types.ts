@@ -50,11 +50,11 @@ export interface ShipmentFormData {
   destination: string;
 }
 
-export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  critical: { label: 'CRITICAL', color: 'text-red-400',    bgColor: 'bg-red-950/60',    borderColor: 'border-red-500/50' },
-  high:     { label: 'HIGH',     color: 'text-orange-400', bgColor: 'bg-orange-950/60', borderColor: 'border-orange-500/50' },
-  medium:   { label: 'MEDIUM',   color: 'text-yellow-400', bgColor: 'bg-yellow-950/60', borderColor: 'border-yellow-500/50' },
-  low:      { label: 'LOW',      color: 'text-green-400',  bgColor: 'bg-green-950/60',  borderColor: 'border-green-500/50' },
+export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bgColor: string; borderColor: string; dotColor: string }> = {
+  critical: { label: 'CRITICAL', color: 'text-red-400',    bgColor: 'bg-red-950/60',    borderColor: 'border-red-500/50', dotColor: '#f87171' },
+  high:     { label: 'HIGH',     color: 'text-orange-400', bgColor: 'bg-orange-950/60', borderColor: 'border-orange-500/50', dotColor: '#fb923c' },
+  medium:   { label: 'MEDIUM',   color: 'text-yellow-400', bgColor: 'bg-yellow-950/60', borderColor: 'border-yellow-500/50', dotColor: '#facc15' },
+  low:      { label: 'LOW',      color: 'text-green-400',  bgColor: 'bg-green-950/60',  borderColor: 'border-green-500/50', dotColor: '#4ade80' },
 };
 
 export const STATUS_CONFIG: Record<ShipmentStatus, { label: string; color: string; bgColor: string; dot: string }> = {

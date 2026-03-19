@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { Station, Edge, Shipment, ShipmentFormData } from './types';
 import { INITIAL_STATIONS, INITIAL_EDGES, createInitialShipments } from './data/initialData';
 import { findOptimalPath, advanceShipment, generateId } from './utils/routing';
@@ -104,48 +104,60 @@ export default function App() {
   const [highlightedShipmentId, setHighlightedShipmentId] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
 
-  // Simulation tick: advance all in-transit shipments
+  // Keep a ref to edges so the tick closure always sees the latest value
+  // without needing to restart the interval every time edge loads change.
+  const edgesRef = useRef(edges);
+  useEffect(() => { edgesRef.current = edges; }, [edges]);
+
+  // Simulation tick — pure advancement only, no side-effects inside updater.
+  // Empty deps: interval is created once and never restarted.
   useEffect(() => {
     const interval = setInterval(() => {
-      setShipments(prev => {
-        const updated = prev.map(s => advanceShipment(s, edges));
-        // Check for newly delivered shipments and update station/edge loads
-        for (let i = 0; i < updated.length; i++) {
-          if (updated[i].status === 'delivered' && prev[i].status === 'in-transit') {
-            const s = updated[i];
-            // Release edge loads
-            setEdges(prevEdges =>
-              prevEdges.map(e => {
-                let edgeOnPath = false;
-                for (let j = 0; j < s.path.length - 1; j++) {
-                  if (
-                    (e.from === s.path[j] && e.to === s.path[j + 1]) ||
-                    (e.from === s.path[j + 1] && e.to === s.path[j])
-                  ) {
-                    edgeOnPath = true;
-                    break;
-                  }
-                }
-                return edgeOnPath
-                  ? { ...e, currentLoad: Math.max(0, e.currentLoad - s.weight) }
-                  : e;
-              })
-            );
-            // Release destination station load
-            setStations(prevStations =>
-              prevStations.map(st =>
-                st.id === s.destination
-                  ? { ...st, currentLoad: Math.max(0, st.currentLoad - s.weight) }
-                  : st
-              )
-            );
-          }
-        }
-        return updated;
-      });
+      setShipments(prev => prev.map(s => advanceShipment(s, edgesRef.current)));
     }, 400);
     return () => clearInterval(interval);
-  }, [edges]);
+  }, []);
+
+  // Delivery cleanup — separate effect watches shipments and releases
+  // edge/station loads when a shipment transitions to 'delivered'.
+  const prevShipmentsRef = useRef<Shipment[]>([]);
+  useEffect(() => {
+    const prevMap = new Map(prevShipmentsRef.current.map(s => [s.id, s]));
+    const newlyDelivered = shipments.filter(
+      s => s.status === 'delivered' && prevMap.get(s.id)?.status === 'in-transit'
+    );
+
+    if (newlyDelivered.length > 0) {
+      setEdges(prevEdges => {
+        let next = prevEdges;
+        for (const s of newlyDelivered) {
+          next = next.map(e => {
+            const onPath = s.path.some((nodeId, i) =>
+              i < s.path.length - 1 &&
+              ((e.from === nodeId && e.to === s.path[i + 1]) ||
+               (e.from === s.path[i + 1] && e.to === nodeId))
+            );
+            return onPath ? { ...e, currentLoad: Math.max(0, e.currentLoad - s.weight) } : e;
+          });
+        }
+        return next;
+      });
+
+      setStations(prevStations => {
+        let next = prevStations;
+        for (const s of newlyDelivered) {
+          next = next.map(st =>
+            st.id === s.destination
+              ? { ...st, currentLoad: Math.max(0, st.currentLoad - s.weight) }
+              : st
+          );
+        }
+        return next;
+      });
+    }
+
+    prevShipmentsRef.current = shipments;
+  }, [shipments]);
 
   const addShipment = useCallback(
     (formData: ShipmentFormData) => {

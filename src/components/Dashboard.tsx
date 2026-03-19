@@ -216,7 +216,7 @@ export default function Dashboard({
             return (
               <CapacityBar
                 key={st.id}
-                label={`${st.shortName} — ${st.name.split(' ')[0]} ${st.name.split(' ')[1]}`}
+                label={`${st.shortName} — ${st.name.split(' ').slice(0, 2).join(' ')}`}
                 used={st.currentLoad}
                 total={st.capacity}
                 color={color}

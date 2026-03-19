@@ -169,14 +169,12 @@ function EdgeLine({
   to,
   isActive,
   isHighlighted,
-  shipmentCount,
 }: {
   edge: Edge;
   from: Station;
   to: Station;
   isActive: boolean;
   isHighlighted: boolean;
-  shipmentCount: number;
 }) {
   const loadPct = edge.currentLoad / edge.maxCapacity;
   const baseOpacity = isActive || isHighlighted ? 1 : 0.25;
@@ -266,17 +264,7 @@ function ShipmentDot({
   const pos = getShipmentPosition(shipment, stations);
   if (!pos) return null;
 
-  const color = PRIORITY_CONFIG[shipment.priority].color
-    .replace('text-', '')
-    .replace('-400', '');
-
-  const colorMap: Record<string, string> = {
-    red: '#f87171',
-    orange: '#fb923c',
-    yellow: '#facc15',
-    green: '#4ade80',
-  };
-  const dotColor = colorMap[color] ?? '#60a5fa';
+  const dotColor = PRIORITY_CONFIG[shipment.priority].dotColor;
 
   return (
     <g>
@@ -375,19 +363,6 @@ export default function GraphView({
     [shipments]
   );
 
-  const shipmentCountByEdge = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const s of activeShipments) {
-      if (!s.path || s.currentLeg >= s.path.length - 1) continue;
-      const from = s.path[s.currentLeg];
-      const to = s.path[s.currentLeg + 1];
-      const edge = edges.find(
-        e => (e.from === from && e.to === to) || (e.from === to && e.to === from)
-      );
-      if (edge) counts[edge.id] = (counts[edge.id] ?? 0) + 1;
-    }
-    return counts;
-  }, [activeShipments, edges]);
 
   const tooltipStation = hoveredStation ? stations.find(s => s.id === hoveredStation) : null;
 
@@ -452,7 +427,6 @@ export default function GraphView({
               to={to}
               isActive={isEdgeActive(edge, activeShipments)}
               isHighlighted={isEdgeInPath(edge, highlightedPath)}
-              shipmentCount={shipmentCountByEdge[edge.id] ?? 0}
             />
           );
         })}

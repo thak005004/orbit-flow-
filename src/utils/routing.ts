@@ -137,7 +137,10 @@ export function advanceShipment(shipment: Shipment, edges: Edge[], tickSpeed = 0
     e => (e.from === fromId && e.to === toId) || (e.from === toId && e.to === fromId)
   );
 
-  const legCost = edge?.cost ?? 5;
+  if (!edge) {
+    console.warn(`[routing] No edge found between "${fromId}" and "${toId}" for shipment "${shipment.id}". Defaulting leg cost to 1.`);
+  }
+  const legCost = edge?.cost ?? 1;
   // Progress per tick: normalize by leg cost so longer routes take more time
   const progressPerTick = tickSpeed / legCost;
   const newProgress = shipment.legProgress + progressPerTick;

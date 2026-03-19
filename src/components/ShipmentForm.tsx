@@ -118,6 +118,7 @@ export default function ShipmentForm({ stations, edges, onAddShipment, lastError
     if (!canSubmit) return;
     onAddShipment(form);
     setSubmitted(true);
+    setUsePreset(false);
     setTimeout(() => setSubmitted(false), 2000);
     setForm(prev => ({
       ...prev,
