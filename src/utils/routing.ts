@@ -1,4 +1,4 @@
-import type { Station, Edge, Shipment } from '../types';
+import type { Station, Edge, Shipment, DijkstraStep } from '../types';
 
 export interface RoutingResult {
   path: string[];
@@ -209,6 +209,121 @@ export function isEdgeInPath(edge: Edge, path: string[]): boolean {
 
 export function generateId(): string {
   return Math.random().toString(36).slice(2, 11);
+}
+
+/**
+ * Run Dijkstra's and capture a snapshot after each node is settled.
+ * Returns an array of steps suitable for step-by-step animation.
+ */
+export function getDijkstraSteps(
+  stations: Station[],
+  edges: Edge[],
+  originId: string,
+  destinationId: string,
+  weight: number,
+): DijkstraStep[] {
+  const steps: DijkstraStep[] = [];
+
+  // Build adjacency (same logic as findOptimalPath)
+  const adjacency = new Map<string, Array<{ to: string; cost: number }>>();
+  for (const station of stations) adjacency.set(station.id, []);
+  for (const edge of edges) {
+    const remaining = edge.maxCapacity - edge.currentLoad;
+    if (remaining < weight) continue;
+    const congestion = 1 + (edge.currentLoad / edge.maxCapacity) * 0.5;
+    const effectiveCost = edge.cost * congestion;
+    adjacency.get(edge.from)?.push({ to: edge.to, cost: effectiveCost });
+    adjacency.get(edge.to)?.push({ to: edge.from, cost: effectiveCost });
+  }
+
+  const distances = new Map<string, number>();
+  const previous = new Map<string, string | null>();
+  const visited = new Set<string>();
+  for (const station of stations) {
+    distances.set(station.id, Infinity);
+    previous.set(station.id, null);
+  }
+  distances.set(originId, 0);
+
+  const queue: Array<{ id: string; cost: number }> = [{ id: originId, cost: 0 }];
+
+  // Initial frame: origin is the only frontier node
+  steps.push({ currentNode: null, visitedNodes: [], frontierNodes: [originId], finalPath: null });
+
+  while (queue.length > 0) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const current = queue.shift()!;
+    if (visited.has(current.id)) continue;
+    visited.add(current.id);
+
+    if (current.id === destinationId) {
+      steps.push({
+        currentNode: current.id,
+        visitedNodes: [...visited],
+        frontierNodes: [...new Set(queue.map(q => q.id).filter(id => !visited.has(id)))],
+        finalPath: null,
+      });
+      break;
+    }
+
+    // Expand neighbors
+    for (const neighbor of adjacency.get(current.id) ?? []) {
+      const newCost = (distances.get(current.id) ?? Infinity) + neighbor.cost;
+      if (newCost < (distances.get(neighbor.to) ?? Infinity)) {
+        distances.set(neighbor.to, newCost);
+        previous.set(neighbor.to, current.id);
+        queue.push({ id: neighbor.to, cost: newCost });
+      }
+    }
+
+    // Capture step after expanding so frontier shows newly discovered nodes
+    steps.push({
+      currentNode: current.id,
+      visitedNodes: [...visited],
+      frontierNodes: [...new Set(queue.map(q => q.id).filter(id => !visited.has(id)))],
+      finalPath: null,
+    });
+  }
+
+  // Reconstruct path for final frame
+  let finalPath: string[] | null = null;
+  if (isFinite(distances.get(destinationId) ?? Infinity)) {
+    const path: string[] = [];
+    let curr: string | null = destinationId;
+    while (curr !== null) {
+      path.unshift(curr);
+      curr = previous.get(curr) ?? null;
+    }
+    if (path[0] === originId) finalPath = path;
+  }
+
+  steps.push({ currentNode: null, visitedNodes: [...visited], frontierNodes: [], finalPath });
+
+  return steps;
+}
+
+/** Credits charged per astronomical unit per unit of cargo weight. */
+export const FUEL_RATE_PER_AU_PER_UNIT = 0.15;
+
+/**
+ * Estimated fuel cost for a routed shipment.
+ * Sums (distanceAU × weight × FUEL_RATE) over every leg in the path.
+ * Legs whose edge cannot be found are skipped (logged in dev via routing warnings).
+ */
+export function calculateFuelCost(
+  path: string[],
+  weight: number,
+  edges: Edge[]
+): number {
+  let total = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const edge = edges.find(
+      e => (e.from === path[i] && e.to === path[i + 1]) ||
+           (e.from === path[i + 1] && e.to === path[i])
+    );
+    if (edge) total += edge.distanceAU * weight * FUEL_RATE_PER_AU_PER_UNIT;
+  }
+  return Math.round(total * 100) / 100; // round to 2 dp
 }
 
 /**

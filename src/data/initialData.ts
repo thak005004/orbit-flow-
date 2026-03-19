@@ -1,5 +1,5 @@
 import type { Station, Edge, Shipment } from '../types';
-import { calculateEfficiencyScore } from '../utils/routing';
+import { calculateEfficiencyScore, calculateFuelCost } from '../utils/routing';
 
 export const INITIAL_STATIONS: Station[] = [
   {
@@ -232,6 +232,7 @@ export function createInitialShipments(): Shipment[] {
       efficiencyScore: calculateEfficiencyScore(
         ['mercury-mining', 'venus-cloud', 'earth-orbital'], 120, 'high', INITIAL_EDGES
       ),
+      fuelCost: calculateFuelCost(['mercury-mining', 'venus-cloud', 'earth-orbital'], 120, INITIAL_EDGES),
     },
     {
       id: 'demo-002',
@@ -249,6 +250,7 @@ export function createInitialShipments(): Shipment[] {
       efficiencyScore: calculateEfficiencyScore(
         ['earth-orbital', 'mars-hub'], 45, 'critical', INITIAL_EDGES
       ),
+      fuelCost: calculateFuelCost(['earth-orbital', 'mars-hub'], 45, INITIAL_EDGES),
     },
     {
       id: 'demo-003',
@@ -266,6 +268,7 @@ export function createInitialShipments(): Shipment[] {
       efficiencyScore: calculateEfficiencyScore(
         ['luna-base', 'mars-hub', 'asteroid-depot', 'jupiter-gateway'], 280, 'medium', INITIAL_EDGES
       ),
+      fuelCost: calculateFuelCost(['luna-base', 'mars-hub', 'asteroid-depot', 'jupiter-gateway'], 280, INITIAL_EDGES),
     },
     {
       id: 'demo-004',
@@ -283,6 +286,7 @@ export function createInitialShipments(): Shipment[] {
       efficiencyScore: calculateEfficiencyScore(
         ['venus-cloud', 'earth-orbital', 'mars-hub', 'asteroid-depot'], 30, 'low', INITIAL_EDGES
       ),
+      fuelCost: calculateFuelCost(['venus-cloud', 'earth-orbital', 'mars-hub', 'asteroid-depot'], 30, INITIAL_EDGES),
     },
     {
       id: 'demo-005',
@@ -300,6 +304,7 @@ export function createInitialShipments(): Shipment[] {
       efficiencyScore: calculateEfficiencyScore(
         ['mars-hub', 'asteroid-depot', 'saturn-station'], 250, 'high', INITIAL_EDGES
       ),
+      fuelCost: calculateFuelCost(['mars-hub', 'asteroid-depot', 'saturn-station'], 250, INITIAL_EDGES),
     },
   ];
 }

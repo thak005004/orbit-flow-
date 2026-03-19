@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Station, Edge, Shipment, ShipmentFormData, Anomaly, NotificationEntry } from './types';
 import { INITIAL_STATIONS, INITIAL_EDGES, createInitialShipments } from './data/initialData';
-import { findOptimalPath, advanceShipment, generateId, calculateEfficiencyScore } from './utils/routing';
+import { findOptimalPath, advanceShipment, generateId, calculateEfficiencyScore, calculateFuelCost, getDijkstraSteps } from './utils/routing';
+import type { DijkstraStep } from './types';
 import { detectAnomalies } from './utils/anomalyDetection';
 import GraphView from './components/GraphView';
 import Dashboard from './components/Dashboard';
@@ -136,6 +137,12 @@ export default function App() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
 
+  // ── Dijkstra visualiser ────────────────────────────────────────────────────
+  const [vizSteps, setVizSteps] = useState<DijkstraStep[]>([]);
+  const [vizIndex, setVizIndex] = useState(0);
+  const [vizPlaying, setVizPlaying] = useState(false);
+  const [vizSpeed, setVizSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
+
   // Derive active anomalies fresh every render — no extra state needed.
   const activeAnomalies = useMemo(
     () => detectAnomalies(stations, edges),
@@ -238,6 +245,17 @@ export default function App() {
     prevShipmentsRef.current = shipments;
   }, [shipments]);
 
+  // Advance viz one step at the configured speed
+  const VIZ_SPEED_MS = { slow: 700, normal: 220, fast: 55 } as const;
+  useEffect(() => {
+    if (!vizPlaying || vizIndex >= vizSteps.length - 1) {
+      if (vizPlaying && vizIndex >= vizSteps.length - 1) setVizPlaying(false);
+      return;
+    }
+    const t = setTimeout(() => setVizIndex(i => i + 1), VIZ_SPEED_MS[vizSpeed]);
+    return () => clearTimeout(t);
+  }, [vizPlaying, vizIndex, vizSteps.length, vizSpeed]);
+
   const addShipment = useCallback(
     (formData: ShipmentFormData) => {
       setLastError(null);
@@ -270,6 +288,7 @@ export default function App() {
         efficiencyScore: calculateEfficiencyScore(
           result.path, formData.weight, formData.priority, edges
         ),
+        fuelCost: calculateFuelCost(result.path, formData.weight, edges),
       };
 
       setShipments(prev => [...prev, newShipment]);
@@ -307,12 +326,31 @@ export default function App() {
     (path: string[], shipmentId?: string) => {
       setHighlightedPath(path);
       setHighlightedShipmentId(shipmentId ?? null);
+
+      if (shipmentId) {
+        const shipment = shipments.find(s => s.id === shipmentId);
+        if (shipment) {
+          const steps = getDijkstraSteps(stations, edges, shipment.origin, shipment.destination, shipment.weight);
+          setVizSteps(steps);
+          setVizIndex(0);
+          setVizPlaying(true);
+        }
+      } else {
+        // Deselected — stop viz
+        setVizSteps([]);
+        setVizIndex(0);
+        setVizPlaying(false);
+      }
     },
-    []
+    [shipments, stations, edges]
   );
 
   const inTransit = shipments.filter(s => s.status === 'in-transit').length;
   const delivered = shipments.filter(s => s.status === 'delivered').length;
+
+  const currentVizStep = vizSteps.length > 0 ? vizSteps[vizIndex] : null;
+  // During viz, suppress the yellow shipment-path highlight; GraphView uses vizStep.finalPath for cyan
+  const effectiveHighlightedPath = vizSteps.length > 0 ? [] : highlightedPath;
   const anomalyEntityIds = useMemo(
     () => new Set(activeAnomalies.map(a => a.entityId)),
     [activeAnomalies]
@@ -332,8 +370,18 @@ export default function App() {
             shipments={shipments}
             selectedStation={selectedStation}
             onSelectStation={setSelectedStation}
-            highlightedPath={highlightedPath}
+            highlightedPath={effectiveHighlightedPath}
             anomalyEntityIds={anomalyEntityIds}
+            vizStep={currentVizStep}
+            vizPlaying={vizPlaying}
+            vizSpeed={vizSpeed}
+            vizStepIndex={vizIndex}
+            vizTotalSteps={vizSteps.length}
+            onVizTogglePlay={() => setVizPlaying(p => !p)}
+            onVizSpeedChange={setVizSpeed}
+            onVizReplay={() => { setVizIndex(0); setVizPlaying(true); }}
+            onVizStepForward={() => setVizIndex(i => Math.min(i + 1, vizSteps.length - 1))}
+            onVizStepBack={() => setVizIndex(i => Math.max(i - 1, 0))}
           />
         </div>
 

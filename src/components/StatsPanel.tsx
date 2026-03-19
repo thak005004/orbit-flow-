@@ -197,6 +197,16 @@ export default function StatsPanel({ shipments, edges, stations }: StatsPanelPro
     );
   }, [shipments]);
 
+  // Fuel cost metrics
+  const totalFuelCost = useMemo(
+    () => shipments.reduce((sum, s) => sum + (s.fuelCost ?? 0), 0),
+    [shipments]
+  );
+  const avgFuelCost = shipments.length > 0 ? totalFuelCost / shipments.length : 0;
+  const fuelPerUnit = totalWeightDelivered > 0
+    ? totalFuelCost / (totalWeightDelivered + inTransit.reduce((sum, s) => sum + s.weight, 0))
+    : 0;
+
   const busiestRoutes = useBusiestRoutes(shipments, edges, stations);
   const maxRouteWeight = busiestRoutes[0]?.totalWeight ?? 1;
 
@@ -321,6 +331,42 @@ export default function StatsPanel({ shipments, edges, stations }: StatsPanelPro
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Network Economics ────────────────────────────────────────── */}
+      <div className="p-3 border-b border-slate-800/60">
+        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest block mb-2">
+          Network Economics
+        </span>
+        {shipments.length === 0 ? (
+          <p className="text-[10px] text-slate-700 font-mono">No fuel data yet</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <StatCard
+              label="Total Fuel Spend"
+              value={`₡${totalFuelCost.toFixed(2)}`}
+              sub={`${shipments.length} shipment${shipments.length !== 1 ? 's' : ''}`}
+              accent="#f59e0b"
+            />
+            <StatCard
+              label="Avg per Shipment"
+              value={`₡${avgFuelCost.toFixed(2)}`}
+              sub="estimated"
+              accent="#fbbf24"
+            />
+            <StatCard
+              label="Cost per Unit"
+              value={`₡${fuelPerUnit.toFixed(3)}`}
+              sub="across all cargo"
+            />
+            <StatCard
+              label="Most Expensive"
+              value={`₡${Math.max(...shipments.map(s => s.fuelCost ?? 0)).toFixed(2)}`}
+              sub="single shipment"
+              accent="#ef4444"
+            />
           </div>
         )}
       </div>

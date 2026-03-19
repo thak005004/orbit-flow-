@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import type { Station, Edge, Shipment } from '../types';
+import type { Station, Edge, Shipment, DijkstraStep } from '../types';
 import { TYPE_CONFIG, PRIORITY_CONFIG } from '../types';
 import { getShipmentPosition, isEdgeActive, isEdgeInPath } from '../utils/routing';
+
+type VizNodeState = 'current' | 'visited' | 'frontier' | 'path' | null;
 
 interface GraphViewProps {
   stations: Station[];
@@ -11,6 +13,16 @@ interface GraphViewProps {
   onSelectStation: (id: string | null) => void;
   highlightedPath: string[];
   anomalyEntityIds: Set<string>;
+  vizStep?: DijkstraStep | null;
+  vizPlaying?: boolean;
+  vizSpeed?: 'slow' | 'normal' | 'fast';
+  vizStepIndex?: number;
+  vizTotalSteps?: number;
+  onVizTogglePlay?: () => void;
+  onVizSpeedChange?: (s: 'slow' | 'normal' | 'fast') => void;
+  onVizReplay?: () => void;
+  onVizStepForward?: () => void;
+  onVizStepBack?: () => void;
 }
 
 // Stable random stars
@@ -37,12 +49,20 @@ function GridLines() {
   return <>{lines}</>;
 }
 
+const VIZ_COLORS: Record<NonNullable<VizNodeState>, string> = {
+  current:  '#ffffff',
+  visited:  '#10b981',
+  frontier: '#f59e0b',
+  path:     '#06b6d4',
+};
+
 function StationNode({
   station,
   isSelected,
   isHighlighted,
   isOnActivePath,
   isAnomalous,
+  vizState,
   onClick,
   onHover,
 }: {
@@ -51,6 +71,7 @@ function StationNode({
   isHighlighted: boolean;
   isOnActivePath: boolean;
   isAnomalous: boolean;
+  vizState: VizNodeState;
   onClick: (e: React.MouseEvent<SVGGElement>) => void;
   onHover: (id: string | null) => void;
 }) {
@@ -59,12 +80,13 @@ function StationNode({
   const loadColor = loadPct > 0.85 ? '#ef4444' : loadPct > 0.6 ? '#f59e0b' : '#10b981';
   const isCritical = loadPct >= 0.95;
 
-  // Radius based on type importance
   const radius = station.type === 'hub' ? 22 : station.type === 'gateway' ? 20 : station.type === 'depot' ? 18 : 15;
   const glowRadius = radius + 8;
   const labelY = station.y + radius + 16;
 
-  const borderColor = isAnomalous ? (isCritical ? '#ef4444' : '#f97316') : config.color;
+  const vizColor = vizState ? VIZ_COLORS[vizState] : null;
+  const borderColor = vizColor ?? (isAnomalous ? (isCritical ? '#ef4444' : '#f97316') : config.color);
+  const isVizActive = vizState !== null;
 
   return (
     <g
@@ -73,11 +95,58 @@ function StationNode({
       onMouseEnter={() => onHover(station.id)}
       onMouseLeave={() => onHover(null)}
     >
-      {/* Anomaly warning ring — pulsing red/orange */}
-      {isAnomalous && (
+      {/* Viz state ring */}
+      {vizState === 'current' && (
         <circle
-          cx={station.x}
-          cy={station.y}
+          cx={station.x} cy={station.y}
+          r={glowRadius + 14}
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth={2}
+          opacity={0.9}
+          className="node-pulse"
+          style={{ filter: 'drop-shadow(0 0 12px #ffffff)' }}
+        />
+      )}
+      {vizState === 'frontier' && (
+        <circle
+          cx={station.x} cy={station.y}
+          r={glowRadius + 10}
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth={1.5}
+          opacity={0.7}
+          className="node-pulse"
+          style={{ filter: 'drop-shadow(0 0 8px #f59e0b)' }}
+        />
+      )}
+      {vizState === 'visited' && (
+        <circle
+          cx={station.x} cy={station.y}
+          r={glowRadius + 6}
+          fill="#10b98118"
+          stroke="#10b981"
+          strokeWidth={1}
+          opacity={0.5}
+        />
+      )}
+      {vizState === 'path' && (
+        <circle
+          cx={station.x} cy={station.y}
+          r={glowRadius + 12}
+          fill="none"
+          stroke="#06b6d4"
+          strokeWidth={2}
+          opacity={0.8}
+          className="node-pulse"
+          style={{ filter: 'drop-shadow(0 0 10px #06b6d4)' }}
+        />
+      )}
+
+      {/* Anomaly warning ring */}
+      {isAnomalous && !isVizActive && (
+        <circle
+          cx={station.x} cy={station.y}
           r={glowRadius + 10}
           fill="none"
           stroke={isCritical ? '#ef4444' : '#f97316'}
@@ -88,43 +157,39 @@ function StationNode({
         />
       )}
 
-      {/* Outer glow when selected or highlighted */}
-      {(isSelected || isHighlighted || isOnActivePath) && (
+      {/* Outer glow ring (selected / on-path) */}
+      {(isSelected || isHighlighted || isOnActivePath) && !isVizActive && (
         <circle
-          cx={station.x}
-          cy={station.y}
+          cx={station.x} cy={station.y}
           r={glowRadius + 6}
           fill="none"
           stroke={config.color}
           strokeWidth={1.5}
           opacity={0.4}
-          style={{ animation: 'node-pulse-anim 2s ease-out infinite' }}
           className="node-pulse"
         />
       )}
 
       {/* Orbit ring */}
       <circle
-        cx={station.x}
-        cy={station.y}
+        cx={station.x} cy={station.y}
         r={glowRadius}
         fill="none"
         stroke={borderColor}
-        strokeWidth={isSelected || isHighlighted || isAnomalous ? 1.5 : 0.8}
-        opacity={isSelected || isHighlighted || isAnomalous ? 0.7 : 0.3}
+        strokeWidth={isVizActive || isSelected || isHighlighted || isAnomalous ? 1.5 : 0.8}
+        opacity={isVizActive || isSelected || isHighlighted || isAnomalous ? 0.7 : 0.3}
         strokeDasharray={isSelected ? '4 2' : 'none'}
       />
 
       {/* Main node body */}
       <circle
-        cx={station.x}
-        cy={station.y}
+        cx={station.x} cy={station.y}
         r={radius}
-        fill={isAnomalous ? `${borderColor}33` : `${config.color}22`}
+        fill={vizColor ? `${vizColor}22` : isAnomalous ? `${borderColor}33` : `${config.color}22`}
         stroke={borderColor}
-        strokeWidth={isSelected || isHighlighted || isAnomalous ? 2.5 : 1.5}
+        strokeWidth={isVizActive || isSelected || isHighlighted || isAnomalous ? 2.5 : 1.5}
         style={{
-          filter: `drop-shadow(0 0 ${isSelected || isAnomalous ? 12 : 6}px ${borderColor}88)`,
+          filter: `drop-shadow(0 0 ${isVizActive || isSelected || isAnomalous ? 14 : 6}px ${borderColor}88)`,
         }}
       />
 
@@ -138,11 +203,10 @@ function StationNode({
 
       {/* Station short name */}
       <text
-        x={station.x}
-        y={station.y + 4}
+        x={station.x} y={station.y + 4}
         textAnchor="middle"
         fontSize={8}
-        fill={config.color}
+        fill={vizColor ?? config.color}
         fontFamily="monospace"
         fontWeight="bold"
       >
@@ -151,32 +215,21 @@ function StationNode({
 
       {/* Station full name label */}
       <text
-        x={station.x}
-        y={labelY}
+        x={station.x} y={labelY}
         textAnchor="middle"
         fontSize={9.5}
-        fill={isSelected || isHighlighted ? 'white' : '#94a3b8'}
+        fill={isVizActive || isSelected || isHighlighted ? 'white' : '#94a3b8'}
         fontFamily="system-ui"
-        style={{ fontWeight: isSelected || isHighlighted ? '600' : '400' }}
+        style={{ fontWeight: isVizActive || isSelected || isHighlighted ? '600' : '400' }}
       >
         {station.name}
       </text>
 
       {/* Capacity bar */}
+      <rect x={station.x - 18} y={labelY + 5} width={36} height={3} rx={1.5} fill="#1e3a5f" />
       <rect
-        x={station.x - 18}
-        y={labelY + 5}
-        width={36}
-        height={3}
-        rx={1.5}
-        fill="#1e3a5f"
-      />
-      <rect
-        x={station.x - 18}
-        y={labelY + 5}
-        width={36 * loadPct}
-        height={3}
-        rx={1.5}
+        x={station.x - 18} y={labelY + 5}
+        width={36 * loadPct} height={3} rx={1.5}
         fill={loadColor}
         style={{ filter: `drop-shadow(0 0 3px ${loadColor})` }}
       />
@@ -191,6 +244,8 @@ function EdgeLine({
   isActive,
   isHighlighted,
   isAnomalous,
+  isVizPath,
+  vizDimmed,
 }: {
   edge: Edge;
   from: Station;
@@ -198,11 +253,16 @@ function EdgeLine({
   isActive: boolean;
   isHighlighted: boolean;
   isAnomalous: boolean;
+  isVizPath: boolean;
+  vizDimmed: boolean;
 }) {
   const loadPct = edge.maxCapacity > 0 ? edge.currentLoad / edge.maxCapacity : 0;
   const isCritical = loadPct >= 0.95;
-  const baseOpacity = isActive || isHighlighted || isAnomalous ? 1 : 0.25;
-  const strokeColor = isHighlighted
+  const anyLit = isHighlighted || isVizPath || isActive || isAnomalous;
+  const baseOpacity = vizDimmed ? 0.08 : anyLit ? 1 : 0.25;
+  const strokeColor = isVizPath
+    ? '#06b6d4'
+    : isHighlighted
     ? '#facc15'
     : isAnomalous
     ? (isCritical ? '#ef4444' : '#f97316')
@@ -229,13 +289,13 @@ function EdgeLine({
         x1={from.x} y1={from.y}
         x2={to.x} y2={to.y}
         stroke={strokeColor}
-        strokeWidth={isHighlighted ? 2.5 : isAnomalous ? 2 : isActive ? 2 : 1}
+        strokeWidth={isVizPath ? 3 : isHighlighted ? 2.5 : isAnomalous ? 2 : isActive ? 2 : 1}
         opacity={baseOpacity}
-        strokeDasharray={isAnomalous ? '6 3' : isActive ? '8 4' : isHighlighted ? '6 3' : 'none'}
-        className={isActive || isAnomalous ? 'route-dash' : ''}
+        strokeDasharray={isAnomalous ? '6 3' : isActive ? '8 4' : (isHighlighted || isVizPath) ? '6 3' : 'none'}
+        className={isActive || isAnomalous || isVizPath ? 'route-dash' : ''}
         style={
-          isActive || isHighlighted || isAnomalous
-            ? { filter: `drop-shadow(0 0 ${isAnomalous ? 6 : 4}px ${strokeColor})` }
+          anyLit
+            ? { filter: `drop-shadow(0 0 ${isAnomalous ? 6 : isVizPath ? 8 : 4}px ${strokeColor})` }
             : undefined
         }
       />
@@ -252,8 +312,8 @@ function EdgeLine({
         />
       )}
 
-      {/* Cost label on hover-friendly path - only for highlighted/active */}
-      {(isHighlighted || isActive) && (
+      {/* Cost label — shown when highlighted, viz-path, or active */}
+      {(isHighlighted || isVizPath || isActive) && (
         <>
           <rect
             x={mx - 18} y={my - 9}
@@ -380,6 +440,16 @@ export default function GraphView({
   onSelectStation,
   highlightedPath,
   anomalyEntityIds,
+  vizStep = null,
+  vizPlaying = false,
+  vizSpeed = 'normal',
+  vizStepIndex = 0,
+  vizTotalSteps = 0,
+  onVizTogglePlay,
+  onVizSpeedChange,
+  onVizReplay,
+  onVizStepForward,
+  onVizStepBack,
 }: GraphViewProps) {
   const [hoveredStation, setHoveredStation] = useState<string | null>(null);
 
@@ -388,6 +458,24 @@ export default function GraphView({
     [shipments]
   );
 
+  // Compute per-node viz state from current step
+  const vizVisited  = useMemo(() => new Set(vizStep?.visitedNodes  ?? []), [vizStep]);
+  const vizFrontier = useMemo(() => new Set(vizStep?.frontierNodes ?? []), [vizStep]);
+  const vizPathSet  = useMemo(() => new Set(vizStep?.finalPath     ?? []), [vizStep]);
+  const vizCurrentNode = vizStep?.currentNode ?? null;
+
+  const getVizState = (id: string): VizNodeState => {
+    if (!vizStep) return null;
+    if (vizPathSet.has(id))     return 'path';
+    if (id === vizCurrentNode)  return 'current';
+    if (vizVisited.has(id))     return 'visited';
+    if (vizFrontier.has(id))    return 'frontier';
+    return null;
+  };
+
+  const vizFinalPath = vizStep?.finalPath ?? null;
+  // Dim all edges while viz is running and path not yet revealed
+  const vizExploring = vizStep !== null && vizFinalPath === null;
 
   const tooltipStation = hoveredStation ? stations.find(s => s.id === hoveredStation) : null;
 
@@ -444,6 +532,7 @@ export default function GraphView({
           const to = stations.find(s => s.id === edge.to);
           if (!from || !to) return null;
 
+          const onVizFinalPath = vizFinalPath !== null && isEdgeInPath(edge, vizFinalPath);
           return (
             <EdgeLine
               key={edge.id}
@@ -453,6 +542,8 @@ export default function GraphView({
               isActive={isEdgeActive(edge, activeShipments)}
               isHighlighted={isEdgeInPath(edge, highlightedPath)}
               isAnomalous={anomalyEntityIds.has(edge.id)}
+              isVizPath={onVizFinalPath}
+              vizDimmed={vizExploring && !onVizFinalPath}
             />
           );
         })}
@@ -466,6 +557,7 @@ export default function GraphView({
             isHighlighted={highlightedPath.includes(station.id)}
             isOnActivePath={activeShipments.some(s => s.path?.includes(station.id))}
             isAnomalous={anomalyEntityIds.has(station.id)}
+            vizState={getVizState(station.id)}
             onClick={(e) => {
               e.stopPropagation();
               onSelectStation(station.id === selectedStation ? null : station.id);
@@ -509,6 +601,107 @@ export default function GraphView({
           </g>
         )}
       </svg>
+
+      {/* ── Dijkstra visualiser control panel ────────────────────────────── */}
+      {vizTotalSteps > 0 && (
+        <div className="absolute bottom-4 left-4 glass border border-slate-700/60 rounded-xl p-3 flex flex-col gap-2.5 min-w-[280px] shadow-2xl">
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 6px #06b6d4' }} />
+              <span className="text-[10px] font-mono text-cyan-400 font-bold tracking-widest uppercase">
+                Dijkstra Pathfinding
+              </span>
+            </div>
+            <span className="text-[10px] font-mono text-slate-500">
+              step <span className="text-slate-300">{vizStepIndex + 1}</span>/{vizTotalSteps}
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-200"
+              style={{
+                width: `${((vizStepIndex + 1) / vizTotalSteps) * 100}%`,
+                background: vizFinalPath ? 'linear-gradient(90deg,#0891b2,#06b6d4)' : 'linear-gradient(90deg,#d97706,#f59e0b)',
+                boxShadow: vizFinalPath ? '0 0 6px #06b6d488' : '0 0 6px #f59e0b88',
+              }}
+            />
+          </div>
+
+          {/* Phase label */}
+          <div className="text-[10px] font-mono text-slate-500 text-center -mt-1">
+            {vizFinalPath
+              ? <span className="text-cyan-400">✓ Optimal path found — {vizFinalPath.length - 1} hops</span>
+              : vizCurrentNode
+              ? <span className="text-amber-400">Examining node…</span>
+              : <span className="text-slate-500">Initialising frontier</span>}
+          </div>
+
+          {/* Playback controls */}
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={onVizReplay}
+              className="px-2 py-1 rounded text-[10px] font-mono text-slate-400 hover:text-white border border-slate-700/60 hover:border-slate-500 transition-colors"
+              title="Restart"
+            >⟳</button>
+            <button
+              onClick={onVizStepBack}
+              disabled={vizStepIndex === 0}
+              className="px-2.5 py-1 rounded text-[10px] font-mono text-slate-400 hover:text-white border border-slate-700/60 hover:border-slate-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >◀</button>
+            <button
+              onClick={onVizTogglePlay}
+              className={`px-4 py-1 rounded text-[10px] font-mono font-bold border transition-colors ${
+                vizPlaying
+                  ? 'text-amber-400 border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20'
+                  : 'text-cyan-400 border-cyan-500/50 bg-cyan-500/10 hover:bg-cyan-500/20'
+              }`}
+            >
+              {vizPlaying ? '❚❚ PAUSE' : '▶ PLAY'}
+            </button>
+            <button
+              onClick={onVizStepForward}
+              disabled={vizStepIndex >= vizTotalSteps - 1}
+              className="px-2.5 py-1 rounded text-[10px] font-mono text-slate-400 hover:text-white border border-slate-700/60 hover:border-slate-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >▶</button>
+          </div>
+
+          {/* Speed selector */}
+          <div className="flex items-center gap-1 justify-center">
+            <span className="text-[9px] font-mono text-slate-600 mr-1">SPEED</span>
+            {(['slow', 'normal', 'fast'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => onVizSpeedChange?.(s)}
+                className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wide transition-colors border ${
+                  vizSpeed === s
+                    ? 'text-cyan-400 border-cyan-500/60 bg-cyan-500/10'
+                    : 'text-slate-600 border-slate-700/40 hover:text-slate-400'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center justify-center gap-3 pt-0.5 border-t border-slate-800/60">
+            {[
+              { color: '#ffffff', label: 'Examining' },
+              { color: '#f59e0b', label: 'Frontier' },
+              { color: '#10b981', label: 'Visited' },
+              { color: '#06b6d4', label: 'Path' },
+            ].map(({ color, label }) => (
+              <div key={label} className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}` }} />
+                <span className="text-[9px] font-mono text-slate-600">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

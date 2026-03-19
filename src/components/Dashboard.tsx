@@ -128,6 +128,8 @@ function ShipmentCard({
             <span>{dest?.shortName ?? '?'}</span>
             <span className="text-slate-700 ml-1">·</span>
             <span>{shipment.weight} units</span>
+            <span className="text-slate-700">·</span>
+            <span className="text-amber-500/80">₡{shipment.fuelCost.toFixed(2)}</span>
           </div>
         </div>
         <div className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-mono ${statusCfg.color} ${statusCfg.bgColor} border-slate-700/30`}>

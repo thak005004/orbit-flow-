@@ -41,6 +41,7 @@ export interface Shipment {
   deliveredAt?: number;
   errorMsg?: string;
   efficiencyScore: number; // 0-100
+  fuelCost: number;        // credits (₡)
 }
 
 export interface ShipmentFormData {
@@ -64,6 +65,13 @@ export const STATUS_CONFIG: Record<ShipmentStatus, { label: string; color: strin
   delivered:  { label: 'DELIVERED',  color: 'text-green-400', bgColor: 'bg-green-950/60', dot: 'bg-green-400' },
   failed:     { label: 'FAILED',     color: 'text-red-400',   bgColor: 'bg-red-950/60',   dot: 'bg-red-400' },
 };
+
+export interface DijkstraStep {
+  currentNode: string | null;   // node being examined this tick (null = init or done)
+  visitedNodes: string[];       // fully settled nodes
+  frontierNodes: string[];      // nodes queued but not yet settled
+  finalPath: string[] | null;   // populated only on the last step
+}
 
 export type AnomalyType = 'warning' | 'critical';
 export type AnomalyCategory = 'depot-capacity' | 'route-capacity';
