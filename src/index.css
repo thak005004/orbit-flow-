@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design tokens ────────────────────────────────────────────────────────── */
+:root {
+  --bg-base:         #020817;
+  --bg-secondary:    #0a1628;
+  --surface:         rgba(13, 21, 38, 0.80);
+  --surface-light:   rgba(17, 29, 53, 0.60);
+  --border-subtle:   rgba(30, 58, 92, 0.60);
+  --text-base:       #ffffff;
+  --text-muted:      #94a3b8;
+  --graph-bg-start:  #0a1628;
+  --graph-bg-end:    #020817;
+  --grid-stroke:     rgba(30, 58, 92, 0.15);
+  --scrollbar-track: #0a1628;
+  --scrollbar-thumb: #1e4976;
+  --scrollbar-hover: #2563a8;
+}
+
+.light-mode {
+  --bg-base:         #eef3f9;
+  --bg-secondary:    #dde8f2;
+  --surface:         rgba(255, 255, 255, 0.88);
+  --surface-light:   rgba(241, 246, 252, 0.90);
+  --border-subtle:   rgba(148, 163, 184, 0.45);
+  --text-base:       #0f172a;
+  --text-muted:      #475569;
+  --graph-bg-start:  #ccd9e8;
+  --graph-bg-end:    #b8cfe0;
+  --grid-stroke:     rgba(100, 116, 139, 0.12);
+  --scrollbar-track: #dde8f2;
+  --scrollbar-thumb: #94a3b8;
+  --scrollbar-hover: #64748b;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -10,10 +43,11 @@
   body {
     margin: 0;
     padding: 0;
-    background: #020817;
-    color: white;
+    background: var(--bg-base);
+    color: var(--text-base);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow: hidden;
+    transition: background 0.3s ease, color 0.3s ease;
   }
 
   /* Default scrollbar — keep narrow for non-panel areas */
@@ -32,44 +66,37 @@
 /* ─── Scrollbar: panel (shipment list, form) ───────────────────────────── */
 .scrollbar-panel {
   scrollbar-width: thin;
-  scrollbar-color: #1e4976 #0a1628;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
-.scrollbar-panel::-webkit-scrollbar {
-  width: 6px;
-}
+.scrollbar-panel::-webkit-scrollbar { width: 6px; }
 .scrollbar-panel::-webkit-scrollbar-track {
-  background: #0a1628;
+  background: var(--scrollbar-track);
   border-radius: 3px;
 }
 .scrollbar-panel::-webkit-scrollbar-thumb {
-  background: #1e4976;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
-  border: 1px solid #0d1f3c;
 }
 .scrollbar-panel::-webkit-scrollbar-thumb:hover {
-  background: #2563a8;
-  box-shadow: 0 0 6px rgba(6, 182, 212, 0.4);
+  background: var(--scrollbar-hover);
 }
 
 /* ─── Scrollbar: thin (depot capacity, compact lists) ───────────────────── */
 .scrollbar-thin-panel {
   scrollbar-width: thin;
-  scrollbar-color: #162d4a #070e1c;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
-.scrollbar-thin-panel::-webkit-scrollbar {
-  width: 4px;
-}
+.scrollbar-thin-panel::-webkit-scrollbar { width: 4px; }
 .scrollbar-thin-panel::-webkit-scrollbar-track {
-  background: #070e1c;
+  background: var(--scrollbar-track);
   border-radius: 2px;
 }
 .scrollbar-thin-panel::-webkit-scrollbar-thumb {
-  background: #162d4a;
+  background: var(--scrollbar-thumb);
   border-radius: 2px;
 }
 .scrollbar-thin-panel::-webkit-scrollbar-thumb:hover {
-  background: #1e4976;
-  box-shadow: 0 0 4px rgba(6, 182, 212, 0.3);
+  background: var(--scrollbar-hover);
 }
 
 @layer utilities {
@@ -83,16 +110,55 @@
     box-shadow: 0 0 12px rgba(6, 182, 212, 0.2), inset 0 0 12px rgba(6, 182, 212, 0.05);
   }
   .glass {
-    background: rgba(13, 21, 38, 0.8);
+    background: var(--surface);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    transition: background 0.3s ease;
   }
   .glass-light {
-    background: rgba(17, 29, 53, 0.6);
+    background: var(--surface-light);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    transition: background 0.3s ease;
   }
 }
+
+/* ─── Light-mode structural overrides ──────────────────────────────────── */
+/* Cards / panels that use opaque slate-900 backgrounds */
+.light-mode .border-slate-700\/40,
+.light-mode .border-slate-700\/50 {
+  border-color: rgba(148, 163, 184, 0.40) !important;
+}
+.light-mode .border-slate-800\/60,
+.light-mode .border-slate-800\/80 {
+  border-color: rgba(148, 163, 184, 0.30) !important;
+}
+
+/* Opaque card backgrounds */
+.light-mode .bg-slate-900\/40 { background-color: rgba(255,255,255,0.80) !important; }
+.light-mode .bg-slate-900\/60 { background-color: rgba(255,255,255,0.85) !important; }
+.light-mode .bg-slate-800\/60 { background-color: rgba(241,245,249,0.80) !important; }
+.light-mode .bg-slate-800\/40 { background-color: rgba(241,245,249,0.70) !important; }
+
+/* Inline background fills */
+.light-mode .bg-slate-800   { background-color: #e2e8f0 !important; }
+.light-mode .bg-slate-900   { background-color: #f1f5f9 !important; }
+.light-mode .bg-space-950   { background-color: var(--bg-base) !important; }
+
+/* Text adjustments */
+.light-mode .text-white      { color: #0f172a !important; }
+.light-mode .text-slate-300  { color: #334155 !important; }
+.light-mode .text-slate-400  { color: #475569 !important; }
+.light-mode .text-slate-500  { color: #64748b !important; }
+.light-mode .text-slate-600  { color: #94a3b8 !important; }
+
+/* Input / select backgrounds */
+.light-mode input, .light-mode select {
+  background-color: rgba(255,255,255,0.90) !important;
+  border-color: rgba(148,163,184,0.50) !important;
+  color: #0f172a !important;
+}
+.light-mode input::placeholder { color: #94a3b8 !important; }
 
 /* Animated route dash */
 .route-dash {

@@ -23,6 +23,7 @@ interface GraphViewProps {
   onVizReplay?: () => void;
   onVizStepForward?: () => void;
   onVizStepBack?: () => void;
+  isDark?: boolean;
 }
 
 // Stable random stars
@@ -38,13 +39,14 @@ const STARS = Array.from({ length: 180 }, (_, i) => {
 });
 
 // Grid lines for the space map feel
-function GridLines() {
+function GridLines({ isDark }: { isDark: boolean }) {
+  const stroke = isDark ? 'rgba(30,58,92,0.15)' : 'rgba(100,116,139,0.12)';
   const lines = [];
   for (let x = 0; x <= 1200; x += 80) {
-    lines.push(<line key={`v${x}`} x1={x} y1={0} x2={x} y2={700} stroke="rgba(30,58,92,0.15)" strokeWidth={1} />);
+    lines.push(<line key={`v${x}`} x1={x} y1={0} x2={x} y2={700} stroke={stroke} strokeWidth={1} />);
   }
   for (let y = 0; y <= 700; y += 80) {
-    lines.push(<line key={`h${y}`} x1={0} y1={y} x2={1200} y2={y} stroke="rgba(30,58,92,0.15)" strokeWidth={1} />);
+    lines.push(<line key={`h${y}`} x1={0} y1={y} x2={1200} y2={y} stroke={stroke} strokeWidth={1} />);
   }
   return <>{lines}</>;
 }
@@ -450,6 +452,7 @@ export default function GraphView({
   onVizReplay,
   onVizStepForward,
   onVizStepBack,
+  isDark = true,
 }: GraphViewProps) {
   const [hoveredStation, setHoveredStation] = useState<string | null>(null);
 
@@ -488,8 +491,8 @@ export default function GraphView({
       >
         <defs>
           <radialGradient id="bg-gradient" cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stopColor="#0a1628" />
-            <stop offset="100%" stopColor="#020817" />
+            <stop offset="0%" stopColor={isDark ? '#0a1628' : '#ccd9e8'} />
+            <stop offset="100%" stopColor={isDark ? '#020817' : '#b8cfe0'} />
           </radialGradient>
           <filter id="glow-strong">
             <feGaussianBlur stdDeviation="4" result="coloredBlur" />
@@ -504,27 +507,30 @@ export default function GraphView({
         <rect width={1200} height={700} fill="url(#bg-gradient)" />
 
         {/* Grid */}
-        <GridLines />
+        <GridLines isDark={isDark} />
 
         {/* Stars */}
         {STARS.map(s => (
-          <circle key={s.id} cx={s.x} cy={s.y} r={s.r} fill="white" opacity={s.op} />
+          <circle key={s.id} cx={s.x} cy={s.y} r={s.r}
+            fill={isDark ? 'white' : '#475569'}
+            opacity={isDark ? s.op : s.op * 0.3}
+          />
         ))}
 
         {/* Region labels */}
-        <text x={140} y={560} fontSize={9} fill="#1e3a5f" fontFamily="monospace" letterSpacing="3">
-          INNER SYSTEM
-        </text>
-        <text x={580} y={570} fontSize={9} fill="#1e3a5f" fontFamily="monospace" letterSpacing="3">
-          ASTEROID BELT
-        </text>
-        <text x={950} y={560} fontSize={9} fill="#1e3a5f" fontFamily="monospace" letterSpacing="3">
-          OUTER SYSTEM
-        </text>
-
-        {/* Separator lines */}
-        <line x1={560} y1={40} x2={560} y2={660} stroke="#1e3a5f" strokeWidth={0.5} strokeDasharray="4 6" opacity={0.5} />
-        <line x1={840} y1={40} x2={840} y2={660} stroke="#1e3a5f" strokeWidth={0.5} strokeDasharray="4 6" opacity={0.5} />
+        {(() => {
+          const regionColor = isDark ? '#1e3a5f' : '#64748b';
+          const sepColor    = isDark ? '#1e3a5f' : '#94a3b8';
+          return (
+            <>
+              <text x={140} y={560} fontSize={9} fill={regionColor} fontFamily="monospace" letterSpacing="3">INNER SYSTEM</text>
+              <text x={580} y={570} fontSize={9} fill={regionColor} fontFamily="monospace" letterSpacing="3">ASTEROID BELT</text>
+              <text x={950} y={560} fontSize={9} fill={regionColor} fontFamily="monospace" letterSpacing="3">OUTER SYSTEM</text>
+              <line x1={560} y1={40} x2={560} y2={660} stroke={sepColor} strokeWidth={0.5} strokeDasharray="4 6" opacity={0.5} />
+              <line x1={840} y1={40} x2={840} y2={660} stroke={sepColor} strokeWidth={0.5} strokeDasharray="4 6" opacity={0.5} />
+            </>
+          );
+        })()}
 
         {/* Edges */}
         {edges.map(edge => {
@@ -578,8 +584,8 @@ export default function GraphView({
 
         {/* Legend */}
         <g transform="translate(20, 20)">
-          <rect width={130} height={130} rx={6} fill="#020817" stroke="#1e3a5f" strokeWidth={1} opacity={0.9} />
-          <text x={10} y={18} fontSize={8} fill="#334155" fontFamily="monospace" letterSpacing="1">STATION TYPES</text>
+          <rect width={130} height={130} rx={6} fill={isDark ? '#020817' : '#ffffff'} stroke={isDark ? '#1e3a5f' : '#cbd5e1'} strokeWidth={1} opacity={0.9} />
+          <text x={10} y={18} fontSize={8} fill={isDark ? '#334155' : '#64748b'} fontFamily="monospace" letterSpacing="1">STATION TYPES</text>
           {Object.entries(TYPE_CONFIG).map(([type, cfg], i) => (
             <g key={type} transform={`translate(10, ${30 + i * 18})`}>
               <circle cx={6} cy={0} r={5} fill={`${cfg.color}22`} stroke={cfg.color} strokeWidth={1.5} />
