@@ -13,6 +13,16 @@ import RouteHistory from './components/RouteHistory';
 
 type Tab = 'dashboard' | 'stats' | 'history' | 'alerts' | 'new-shipment';
 
+type SimSpeed = 'paused' | 'slow' | 'normal' | 'fast' | 'turbo';
+
+const SIM_SPEEDS: { id: SimSpeed; label: string; tickSpeed: number }[] = [
+  { id: 'paused', label: '❚❚',  tickSpeed: 0     },
+  { id: 'slow',   label: '½×',  tickSpeed: 0.005 },
+  { id: 'normal', label: '1×',  tickSpeed: 0.01  },
+  { id: 'fast',   label: '2×',  tickSpeed: 0.02  },
+  { id: 'turbo',  label: '5×',  tickSpeed: 0.05  },
+];
+
 function Header({
   inTransit,
   delivered,
@@ -21,6 +31,8 @@ function Header({
   onToggleTheme,
   showGraph,
   onToggleGraph,
+  simSpeed,
+  onSimSpeedChange,
 }: {
   inTransit: number;
   delivered: number;
@@ -29,6 +41,8 @@ function Header({
   onToggleTheme: () => void;
   showGraph: boolean;
   onToggleGraph: () => void;
+  simSpeed: SimSpeed;
+  onSimSpeedChange: (s: SimSpeed) => void;
 }) {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
@@ -86,6 +100,26 @@ function Header({
           <span className="text-[10px] font-mono text-slate-600">
             {time.toISOString().slice(0, 19).replace('T', ' ')} UTC
           </span>
+        </div>
+
+        {/* Simulation speed control */}
+        <div className="flex items-center rounded-lg bg-slate-900/60 border border-slate-800/60 overflow-hidden">
+          {SIM_SPEEDS.map(s => (
+            <button
+              key={s.id}
+              onClick={() => onSimSpeedChange(s.id)}
+              title={s.id.charAt(0).toUpperCase() + s.id.slice(1)}
+              className={`px-2 py-1.5 text-[10px] font-mono font-bold transition-colors border-r border-slate-800/60 last:border-r-0 ${
+                simSpeed === s.id
+                  ? s.id === 'paused'
+                    ? 'bg-slate-700/60 text-slate-300'
+                    : 'bg-cyan-500/15 text-cyan-400'
+                  : 'text-slate-600 hover:text-slate-400'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
 
         {/* Map toggle — only visible on mobile/tablet */}
@@ -190,6 +224,9 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
 
   const [showGraph, setShowGraph] = useState(true);
+  const [simSpeed, setSimSpeed] = useState<SimSpeed>('normal');
+  const simSpeedRef = useRef<SimSpeed>('normal');
+  useEffect(() => { simSpeedRef.current = simSpeed; }, [simSpeed]);
 
   // ── Dijkstra visualiser ────────────────────────────────────────────────────
   const [vizSteps, setVizSteps] = useState<DijkstraStep[]>([]);
@@ -249,12 +286,14 @@ export default function App() {
   const edgesRef = useRef(edges);
   useEffect(() => { edgesRef.current = edges; }, [edges]);
 
-  // Simulation tick — pure advancement only, no side-effects inside updater.
-  // Empty deps: interval is created once and never restarted.
+  // Simulation tick — fixed 100ms interval; speed is controlled via simSpeedRef
+  // so we never need to restart the interval when the user changes speed.
   useEffect(() => {
     const interval = setInterval(() => {
-      setShipments(prev => prev.map(s => advanceShipment(s, edgesRef.current)));
-    }, 400);
+      const cfg = SIM_SPEEDS.find(s => s.id === simSpeedRef.current);
+      if (!cfg || cfg.tickSpeed === 0) return; // paused
+      setShipments(prev => prev.map(s => advanceShipment(s, edgesRef.current, cfg.tickSpeed)));
+    }, 100);
     return () => clearInterval(interval);
   }, []);
 
@@ -421,6 +460,8 @@ export default function App() {
         onToggleTheme={() => setIsDark(d => !d)}
         showGraph={showGraph}
         onToggleGraph={() => setShowGraph(v => !v)}
+        simSpeed={simSpeed}
+        onSimSpeedChange={setSimSpeed}
       />
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
